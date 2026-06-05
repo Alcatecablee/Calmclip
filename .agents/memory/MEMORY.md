@@ -1,0 +1,1 @@
+- [WebCodecs rotation fix](webcodecs-rotation.md) — phone videos stored landscape with rotate=90 need coded-vs-display dim detection and canvas affine transform when drawing frames

@@ -1,0 +1,45 @@
+import type { CaptionGroup } from './captionEngine'
+
+function toTimecode(seconds: number, format: 'srt' | 'vtt'): string {
+  const h   = Math.floor(seconds / 3600)
+  const m   = Math.floor((seconds % 3600) / 60)
+  const s   = Math.floor(seconds % 60)
+  const ms  = Math.round((seconds % 1) * 1000)
+  const sep = format === 'srt' ? ',' : '.'
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}${sep}${String(ms).padStart(3, '0')}`
+}
+
+export function generateSRT(captionGroups: CaptionGroup[]): string {
+  if (!captionGroups || captionGroups.length === 0) return ''
+  return captionGroups
+    .map((group, i) => {
+      const start = group.words[0]?.startTime ?? 0
+      const end   = group.words[group.words.length - 1]?.endTime ?? start + 1
+      const text  = group.words.map(w => w.text).join(' ')
+      return `${i + 1}\n${toTimecode(start, 'srt')} --> ${toTimecode(end, 'srt')}\n${text}`
+    })
+    .join('\n\n')
+}
+
+export function generateVTT(captionGroups: CaptionGroup[]): string {
+  if (!captionGroups || captionGroups.length === 0) return ''
+  const body = captionGroups
+    .map((group) => {
+      const start = group.words[0]?.startTime ?? 0
+      const end   = group.words[group.words.length - 1]?.endTime ?? start + 1
+      const text  = group.words.map(w => w.text).join(' ')
+      return `${toTimecode(start, 'vtt')} --> ${toTimecode(end, 'vtt')}\n${text}`
+    })
+    .join('\n\n')
+  return `WEBVTT\n\n${body}`
+}
+
+export function downloadSubtitle(content: string, filename: string): void {
+  const blob = new Blob([content], { type: 'text/plain' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
