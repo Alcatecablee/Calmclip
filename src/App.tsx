@@ -628,6 +628,7 @@ export default function App() {
             <h1 className="hero-item hero-item-1" style={{
               fontSize: 'clamp(42px, 6.5vw, 76px)',
               fontWeight: 700,
+              fontFamily: "'Space Grotesk', system-ui, sans-serif",
               lineHeight: 1.04,
               letterSpacing: '-0.038em',
               color: 'var(--text-primary)',
@@ -643,13 +644,13 @@ export default function App() {
             <p className="hero-item hero-item-2" style={{
               fontSize: 15,
               color: 'var(--text-dim)',
-              lineHeight: 1.8,
+              lineHeight: 1.7,
               textAlign: 'center',
-              maxWidth: 400,
+              maxWidth: 520,
               margin: '0 0 18px 0',
               fontWeight: 400,
             }}>
-              Edit depositions, source interviews, or confidential recordings. Nothing leaves your machine.
+              Designed for lawyers, journalists, and anyone whose footage has to stay on their machine.
             </p>
 
             <div className="hero-item hero-item-3" style={{
@@ -696,43 +697,42 @@ export default function App() {
               className="section-reveal"
               style={{
                 width: '100%',
-                maxWidth: 560,
+                maxWidth: 820,
                 marginTop: 96,
+                paddingTop: 40,
+                borderTop: '1px solid var(--border)',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: 14,
-                padding: '52px 36px',
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 20,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
-                textAlign: 'center',
+                justifyContent: 'space-between',
+                gap: 24,
+                flexWrap: 'wrap',
               }}
             >
-              <p style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '-0.03em',
-                margin: 0,
-                lineHeight: 1.25,
-              }}>
-                Ready to edit your first video?
-              </p>
-              <p style={{
-                fontSize: 14,
-                color: 'var(--text-dim)',
-                margin: 0,
-                lineHeight: 1.7,
-                maxWidth: 360,
-              }}>
-                No signup. No install. Drop your file and start in seconds.
-              </p>
+              <div>
+                <p style={{
+                  fontSize: 22,
+                  fontWeight: 700,
+                  fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                  color: 'var(--text-primary)',
+                  letterSpacing: '-0.03em',
+                  margin: '0 0 6px 0',
+                  lineHeight: 1.25,
+                }}>
+                  Ready to edit your first video?
+                </p>
+                <p style={{
+                  fontSize: 13,
+                  color: 'var(--text-dim)',
+                  margin: 0,
+                  lineHeight: 1.7,
+                }}>
+                  No signup. No install. Drop your file and start in seconds.
+                </p>
+              </div>
               <button
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="navbar-upgrade-btn"
-                style={{ height: 40, fontSize: 14, padding: '0 32px', marginLeft: 0, marginTop: 4 }}
+                style={{ height: 40, fontSize: 14, padding: '0 32px', flexShrink: 0 }}
               >
                 Start editing now
               </button>
@@ -753,45 +753,6 @@ export default function App() {
               Privacy policy
             </a>
 
-            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', width: '100%', maxWidth: 560 }}>
-              <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 10, textAlign: 'center' }}>
-                From the same maker
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <a
-                  href="https://quickbridge.app?ref=calmclip"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 12, textDecoration: 'none', color: 'inherit' }}
-                  onMouseOver={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
-                  onMouseOut={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                >
-                  <span style={{ display: 'inline-flex', alignItems: 'center', background: '#ffffff', borderRadius: 3, padding: '1px 4px', flexShrink: 0, marginTop: 1 }}>
-                    <img src="/quickbridge-logo.png" alt="QuickBridge" height="20" style={{ width: 'auto', objectFit: 'contain', display: 'block', mixBlendMode: 'multiply' }} />
-                  </span>
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                    <strong style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>QuickBridge</strong>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>P2P file transfer between any devices. No install, no account.</span>
-                  </span>
-                </a>
-                <a
-                  href="https://calmpc.com?ref=calmclip"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 12, textDecoration: 'none', color: 'inherit' }}
-                  onMouseOver={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
-                  onMouseOut={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                >
-                  <span style={{ display: 'inline-flex', alignItems: 'center', background: '#1c1c24', borderRadius: 3, padding: '1px 4px', flexShrink: 0, marginTop: 1 }}>
-                    <img src="/calmpc-logo.png" alt="CalmPC" height="18" style={{ width: 'auto', objectFit: 'contain', display: 'block', mixBlendMode: 'screen' }} />
-                  </span>
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                    <strong style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>CalmPC</strong>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>Free PC health check and fix guides. Runs in your browser.</span>
-                  </span>
-                </a>
-              </div>
-            </div>
           </div>
         )}
 
@@ -1207,15 +1168,11 @@ export default function App() {
                               onWordsChange={setWords}
                               videoDuration={duration}
                             />
-                            {words.length > 0 && (
-                              <>
-                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-                                <CaptionStylePanel
-                                  style={captionStyle}
-                                  onChange={setCaptionStyle}
-                                />
-                              </>
-                            )}
+                            <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                            <CaptionStylePanel
+                              style={captionStyle}
+                              onChange={setCaptionStyle}
+                            />
                           </div>
                         </Section>
                       )}

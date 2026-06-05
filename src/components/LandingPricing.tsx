@@ -31,25 +31,23 @@ export default function LandingPricing({ onUpgrade }: Props) {
     <div style={{ width: '100%', maxWidth: 820, marginTop: 88 }}>
       <span className="landing-eyebrow">Pricing</span>
       <h2 style={{
-        fontSize: 28,
+        fontSize: 30,
         fontWeight: 700,
+        fontFamily: "'Space Grotesk', system-ui, sans-serif",
         color: 'var(--text-primary)',
         letterSpacing: '-0.035em',
-        textAlign: 'center',
-        margin: '0 0 10px 0',
+        margin: '0 0 8px 0',
         lineHeight: 1.18,
       }}>
-        Free to start, pro when you are ready
+        Free to start. Upgrade when you need more.
       </h2>
       <p style={{
-        fontSize: 14,
+        fontSize: 13,
         color: 'var(--text-dim)',
-        textAlign: 'center',
-        margin: '0 0 32px 0',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        lineHeight: 1.7,
-        maxWidth: 480,
+        marginTop: 0,
+        marginBottom: 40,
+        lineHeight: 1.75,
+        maxWidth: 460,
       }}>
         No account needed. No trial period. Upgrade only if you want to.
       </p>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, AlertCircle, CheckCircle2, Wand2 } from 'lucide-react'
 import { extractAudioFromVideo } from '@/lib/audioExtractor'
@@ -59,6 +59,26 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
   const [, setStatus] = useState('')
   const [overallPct, setOverallPct] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function clearFallback() {
+    if (fallbackIntervalRef.current !== null) {
+      clearInterval(fallbackIntervalRef.current)
+      fallbackIntervalRef.current = null
+    }
+  }
+
+  function startTranscribeFallback(durationSec: number) {
+    clearFallback()
+    const RATIO = 3.5
+    const expectedMs = Math.max(durationSec, 30) * RATIO * 1000
+    const startTs = Date.now()
+    fallbackIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTs
+      const pct = 82 + Math.round(Math.min(elapsed / expectedMs, 1) * 17)
+      setOverallPct(prev => Math.max(prev, Math.min(pct, 99)))
+    }, 500)
+  }
 
   const handleTranscribe = async () => {
     if (!videoFile) {
@@ -91,25 +111,29 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
         (msg) => {
           setStatus(msg)
           const pct = computeOverallPct(msg)
-          if (pct !== null) setOverallPct(pct)
+          if (pct !== null) setOverallPct(prev => Math.max(prev, pct))
           if (msg.startsWith('Downloading model')) {
             setPhase(PHASES.downloading)
           } else if (msg.startsWith('Loading Whisper') || msg.startsWith('Model ready')) {
             setPhase(PHASES.loading)
           } else if (msg.startsWith('Transcribing')) {
             setPhase(PHASES.transcribing)
+            startTranscribeFallback(videoDuration || 60)
           } else if (msg === 'Done') {
+            clearFallback()
             setPhase(PHASES.done)
           }
         },
       )
       words = result.words
     } catch (e) {
+      clearFallback()
       setPhase(PHASES.error)
       setError('Transcription failed: ' + (e as Error).message)
       return
     }
 
+    clearFallback()
     setOverallPct(100)
     setPhase(PHASES.done)
     onTranscribed(words)

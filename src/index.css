@@ -990,6 +990,78 @@ select {
   border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
+/* ── Landing: eyebrow section labels ───────────────────────────── */
+
+.landing-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  margin-bottom: 12px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* ── Landing: rule-separated row layout ────────────────────────── */
+
+.landing-row {
+  transition: background 0.15s ease;
+  opacity: 0;
+}
+
+.landing-row:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.landing-row--featured {
+  background: var(--primary-a4);
+}
+
+.landing-row--featured:hover {
+  background: var(--primary-a8);
+}
+
+.landing-spec-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+@media (max-width: 560px) {
+  .landing-spec-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* ── Landing: row entrance stagger ──────────────────────────────── */
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.section-reveal.is-visible .landing-row {
+  animation: row-in 0.38s ease-out both;
+}
+
+.section-reveal.is-visible .landing-row:nth-child(1) { animation-delay: 0.06s; }
+.section-reveal.is-visible .landing-row:nth-child(2) { animation-delay: 0.14s; }
+.section-reveal.is-visible .landing-row:nth-child(3) { animation-delay: 0.22s; }
+.section-reveal.is-visible .landing-row:nth-child(4) { animation-delay: 0.30s; }
+.section-reveal.is-visible .landing-row:nth-child(5) { animation-delay: 0.38s; }
+.section-reveal.is-visible .landing-row:nth-child(6) { animation-delay: 0.46s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-row {
+    opacity: 1;
+  }
+  .section-reveal.is-visible .landing-row {
+    animation: none;
+  }
+}
+
 /* ── Sister tools section ──────────────────────────────────────── */
 
 .sister-tools-section {

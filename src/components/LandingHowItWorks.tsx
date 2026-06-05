@@ -4,22 +4,22 @@ const STEPS = [
   {
     Icon: FolderOpen,
     label: 'Open your video',
-    desc: 'Drop, browse, or paste any MP4, MOV, WebM or MKV file. Nothing leaves your device.',
+    desc: 'MP4, MOV, WebM, or MKV. Drag it onto the page or browse for it. That\'s the whole setup.',
   },
   {
     Icon: Sliders,
-    label: 'Choose your edits',
-    desc: 'Trim, cut silence, blur faces, resize. Use any combination.',
+    label: 'Pick your tools',
+    desc: 'Trim, silence cutter, face blur, audio, captions. Use whichever ones you need and skip the rest.',
   },
   {
     Icon: Eye,
-    label: 'Review in the preview',
-    desc: 'See exactly what your export will look like before committing.',
+    label: 'Check the preview',
+    desc: 'Plays back with your edits applied so you know exactly what you\'re getting before you export.',
   },
   {
     Icon: Download,
     label: 'Export to your device',
-    desc: 'FFmpeg renders locally and saves the finished file straight to your machine.',
+    desc: 'Click export and the file downloads directly. No cloud processing, no waiting on a server.',
   },
 ]
 
@@ -28,81 +28,81 @@ export default function LandingHowItWorks() {
     <div style={{ width: '100%', maxWidth: 820, marginTop: 88 }}>
       <span className="landing-eyebrow">How it works</span>
       <h2 style={{
-        fontSize: 28,
+        fontSize: 30,
         fontWeight: 700,
+        fontFamily: "'Space Grotesk', system-ui, sans-serif",
         color: 'var(--text-primary)',
         letterSpacing: '-0.035em',
-        textAlign: 'center',
-        margin: '0 0 10px 0',
+        margin: '0 0 8px 0',
         lineHeight: 1.18,
       }}>
         From file to export in four steps
       </h2>
       <p style={{
-        fontSize: 14,
+        fontSize: 13,
         color: 'var(--text-dim)',
-        textAlign: 'center',
-        margin: '0 0 32px 0',
-        lineHeight: 1.7,
-        maxWidth: 480,
-        marginLeft: 'auto',
-        marginRight: 'auto',
+        marginTop: 0,
+        marginBottom: 40,
+        lineHeight: 1.75,
+        maxWidth: 460,
       }}>
-        No account, no server, no waiting for uploads. Everything runs locally in your browser.
+        Open a file and start editing. No sign-in, nothing to install.
       </p>
-      <div className="steps-grid">
+
+      <div style={{ width: '100%' }}>
         {STEPS.map((step, i) => {
           const Icon = step.Icon
           return (
             <div
               key={i}
-              className="landing-card-hover"
+              className="landing-row"
               style={{
                 display: 'flex',
-                flexDirection: 'column',
-                gap: 14,
-                padding: '26px 22px',
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
-                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                alignItems: 'flex-start',
+                borderTop: '1px solid var(--border-subtle)',
+                ...(i === STEPS.length - 1 ? { borderBottom: '1px solid var(--border-subtle)' } : {}),
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 52,
+                flexShrink: 0,
+                paddingTop: 28,
+                paddingBottom: 28,
+              }}>
                 <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 22,
-                  height: 22,
-                  borderRadius: '50%',
-                  background: 'var(--primary-a10)',
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: 700,
-                  fontFamily: "'SF Mono','Fira Code',monospace",
+                  fontFamily: "'Space Grotesk', system-ui, sans-serif",
                   color: 'var(--primary)',
-                  flexShrink: 0,
+                  letterSpacing: '0.1em',
                 }}>
-                  {i + 1}
+                  {String(i + 1).padStart(2, '0')}
                 </span>
-                <Icon size={14} color="var(--primary)" />
               </div>
-              <span style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                letterSpacing: '-0.01em',
-                lineHeight: 1.3,
-              }}>
-                {step.label}
-              </span>
-              <span style={{
-                fontSize: 12,
-                color: 'var(--text-muted)',
-                lineHeight: 1.65,
-              }}>
-                {step.desc}
-              </span>
+
+              <div style={{ flex: 1, padding: '26px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Icon size={13} color="var(--text-muted)" />
+                  <span style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    letterSpacing: '-0.015em',
+                    lineHeight: 1.3,
+                  }}>
+                    {step.label}
+                  </span>
+                </div>
+                <p style={{
+                  fontSize: 13,
+                  color: 'var(--text-muted)',
+                  lineHeight: 1.75,
+                  margin: 0,
+                  maxWidth: 520,
+                }}>
+                  {step.desc}
+                </p>
+              </div>
             </div>
           )
         })}

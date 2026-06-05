@@ -4,23 +4,23 @@ import { ChevronDown } from 'lucide-react'
 const FAQ_ITEMS = [
   {
     q: 'Does CalmClip upload my video to a server?',
-    a: 'No. CalmClip processes everything inside your browser using WebAssembly. Zero bytes of your video are ever sent to any server. Your files stay on your device at all times.',
+    a: 'No. Everything runs in your browser through WebAssembly. Your video never leaves your device, not even a single frame.',
   },
   {
     q: 'Is CalmClip free to use?',
-    a: 'Yes. CalmClip is completely free. No account, no subscription, no hidden fees. Open the site and start editing immediately.',
+    a: "Yes, it's free. No account, no subscription, no gotcha fees. Just open the site and start.",
   },
   {
     q: 'What video formats does CalmClip support?',
-    a: 'CalmClip supports MP4, MOV, WebM, and MKV files. All editing and export happen locally in your browser using FFmpeg compiled to WebAssembly.',
+    a: 'MP4, MOV, WebM, and MKV. Everything runs locally, so there is no upload step regardless of which format you use.',
   },
   {
     q: 'Can CalmClip handle large video files?',
-    a: 'Yes. CalmClip processes files locally using FFmpeg compiled to WebAssembly, so it handles large files (1 GB and above) without upload delays. Editing starts immediately after you open the file.',
+    a: 'Yes. Since nothing is uploaded, file size never causes upload delays. Open the file and editing starts immediately. Most machines handle files over 1 GB without trouble.',
   },
   {
     q: 'Does CalmClip require an account or login?',
-    a: 'No. CalmClip requires no account, no login, and no registration. Open the site, drop your video, and start editing.',
+    a: 'No. Drop your file and start editing. There is no account, no registration, nothing to set up first.',
   },
 ]
 
@@ -31,24 +31,24 @@ export default function LandingFAQ() {
     <div style={{ width: '100%', maxWidth: 820, marginTop: 88, marginBottom: 12 }}>
       <span className="landing-eyebrow">FAQ</span>
       <h2 style={{
-        fontSize: 28,
+        fontSize: 30,
         fontWeight: 700,
+        fontFamily: "'Space Grotesk', system-ui, sans-serif",
         color: 'var(--text-primary)',
         letterSpacing: '-0.035em',
-        textAlign: 'center',
-        margin: '0 0 10px 0',
+        margin: '0 0 8px 0',
         lineHeight: 1.18,
       }}>
         Common questions
       </h2>
       <p style={{
-        fontSize: 14,
+        fontSize: 13,
         color: 'var(--text-dim)',
-        textAlign: 'center',
-        margin: '0 0 32px 0',
-        lineHeight: 1.7,
+        marginTop: 0,
+        marginBottom: 40,
+        lineHeight: 1.75,
       }}>
-        Everything you need to know before you start.
+        If something is not covered here, the answer is almost certainly no uploads and no account.
       </p>
       <div>
         {FAQ_ITEMS.map((item, i) => {
@@ -69,7 +69,7 @@ export default function LandingFAQ() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: 12,
-                  padding: '15px 0',
+                  padding: '16px 0',
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
@@ -103,8 +103,8 @@ export default function LandingFAQ() {
                   <p style={{
                     fontSize: 13,
                     color: 'var(--text-muted)',
-                    lineHeight: 1.7,
-                    margin: '0 0 15px 0',
+                    lineHeight: 1.75,
+                    margin: '0 0 16px 0',
                     paddingRight: 28,
                   }}>
                     {item.a}

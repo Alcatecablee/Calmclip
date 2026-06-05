@@ -5,25 +5,25 @@ export default function LandingSisterTools() {
     <div style={{ width: '100%', maxWidth: 820, marginTop: 88 }}>
       <span className="landing-eyebrow">From the same maker</span>
       <h2 style={{
-        fontSize:      28,
+        fontSize:      30,
         fontWeight:    700,
+        fontFamily:    "'Space Grotesk', system-ui, sans-serif",
         color:         'var(--text-primary)',
         letterSpacing: '-0.035em',
-        textAlign:     'center',
-        margin:        '0 0 10px 0',
+        margin:        '0 0 8px 0',
         lineHeight:    1.18,
       }}>
         More browser-native tools that respect your privacy
       </h2>
       <p style={{
-        fontSize:   14,
-        color:      'var(--text-dim)',
-        textAlign:  'center',
-        margin:     '0 auto 32px auto',
-        lineHeight: 1.7,
-        maxWidth:   480,
+        fontSize:    13,
+        color:       'var(--text-dim)',
+        marginTop:   0,
+        marginBottom: 40,
+        lineHeight:  1.75,
+        maxWidth:    460,
       }}>
-        Same principle as CalmClip: everything runs locally. No upload, no account, no tracking.
+        From the same person who built CalmClip. Same rules: no uploads, no accounts, no tracking.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>

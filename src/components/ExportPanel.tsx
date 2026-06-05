@@ -211,7 +211,7 @@ export default function ExportPanel({
       )}
 
       <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-faint)' }}>
-        Exports use canvas compositing. Captions, blur regions, watermark and cuts are burned in. Output: WebM VP9.
+        Captions, blur, watermark, and cuts are burned in on export. Output format: WebM (VP9).
       </p>
     </div>
   )
