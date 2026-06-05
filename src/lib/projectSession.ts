@@ -2,6 +2,7 @@ import type { Ratio, CropMode, WatermarkOpts } from './ffmpeg'
 import type { LoudnessTarget } from './loudness'
 import type { BlurRegion } from '../components/FaceBlurPanel'
 import type { SilenceSegment } from './silenceCutter'
+import type { Word, CaptionStyle } from './captionEngine'
 
 const DB_NAME = 'calmclip_db'
 const DB_VERSION = 1
@@ -23,6 +24,8 @@ export interface SessionData {
   denoiseAudio:   boolean
   manualCuts?:    SilenceSegment[]
   watermark?:     WatermarkOpts | null
+  words?:         Word[]
+  captionStyle?:  CaptionStyle
 }
 
 function makeFileKey(file: File): string {

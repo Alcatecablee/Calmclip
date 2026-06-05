@@ -1,7 +1,7 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "installCommand": "pnpm install",
   "headers": [
     {
       "source": "/(.*)",

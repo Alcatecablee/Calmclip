@@ -58,7 +58,7 @@ export async function extractAudioFromVideo(videoFile: File): Promise<Blob> {
       )
     }
 
-    return new Blob([data], { type: 'audio/wav' })
+    return new Blob([data as Uint8Array<ArrayBuffer>], { type: 'audio/wav' })
   } finally {
     // Fire-and-forget cleanup: do not await, mirroring the pattern in ffmpeg.ts.
     // Awaiting deleteFile after exec can hang when the MT pthreads runtime is

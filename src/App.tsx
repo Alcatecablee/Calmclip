@@ -148,6 +148,7 @@ export default function App() {
     trimStart, trimEnd, ratio, cropMode, loudness, stripMeta,
     blurRegions, silenceSegs, removeSilence,
     denoiseAudio, manualCuts, watermark,
+    words, captionStyle,
   }
 
   const {
@@ -191,6 +192,8 @@ export default function App() {
     setDenoiseAudio(session.denoiseAudio ?? false)
     setManualCuts(session.manualCuts ?? [])
     if (session.watermark) setWatermark(session.watermark)
+    if (session.words?.length) setWords(session.words)
+    if (session.captionStyle) setCaptionStyle(session.captionStyle)
     setSessionBanner(true)
     setTimeout(() => setSessionBanner(false), 4000)
   }, [setManualCuts, setSessionBanner])
@@ -472,9 +475,6 @@ export default function App() {
     setCaptionStyle(CAPTION_PRESETS.boldPop)
   }
 
-  function sp(id: string) {
-    return { isOpen: openSection === id, onToggle: () => setOpenSection(id) }
-  }
 
   useEffect(() => {
     if (step !== 'drop') return
@@ -937,6 +937,31 @@ export default function App() {
             >
               {step === 'edit' && (
                 <>
+                  {/* Workflow progress bar */}
+                  {(() => {
+                    const tabIds = ['trim','silence-cutter','region-blur','loudness','captions','privacy','watermark','thumbnail','export']
+                    const currentIdx = tabIds.indexOf(openSection)
+                    return (
+                      <div style={{ display: 'flex', gap: 1, height: 3, background: 'var(--bg-surface)', flexShrink: 0, paddingInline: 1, paddingTop: 1 }}>
+                        {tabIds.map((tid, i) => (
+                          <div
+                            key={tid}
+                            style={{
+                              flex:       1,
+                              borderRadius: 2,
+                              background: i < currentIdx
+                                ? 'var(--primary-a20)'
+                                : i === currentIdx
+                                ? 'var(--primary)'
+                                : 'var(--border-subtle)',
+                              transition: 'background 0.25s ease',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )
+                  })()}
+
                   {/* Tool tab strip */}
                   <div
                     style={{
@@ -949,14 +974,14 @@ export default function App() {
                   >
                     {([
                       { id: 'trim',           icon: <Scissors size={12} />, label: 'Trim',     badge: fmtDur(Math.max(0, trimEnd - trimStart)) },
-                      { id: 'captions',       icon: <Captions size={12} />, label: 'Captions', badge: words.length > 0 ? `${words.length}w` : undefined },
-                      { id: 'export',         icon: <Download size={12} />, label: 'Export',   badge: undefined },
                       { id: 'silence-cutter', icon: <VolumeX size={12} />,  label: 'Silence',  badge: removeSilence && silenceSegs.length > 0 ? String(silenceSegs.length) : undefined },
-                      { id: 'loudness',       icon: <Volume2 size={12} />,  label: 'Audio',    badge: loudness !== 'off' ? loudness : undefined },
                       { id: 'region-blur',    icon: <EyeOff size={12} />,   label: 'Blur',     badge: blurRegions.length > 0 ? String(blurRegions.length) : undefined },
+                      { id: 'loudness',       icon: <Volume2 size={12} />,  label: 'Audio',    badge: loudness !== 'off' ? loudness : undefined },
+                      { id: 'captions',       icon: <Captions size={12} />, label: 'Captions', badge: words.length > 0 ? `${words.length}w` : undefined },
                       { id: 'privacy',        icon: <Lock size={12} />,     label: 'Privacy',  badge: stripMeta ? 'on' : undefined },
                       { id: 'watermark',      icon: <Sparkles size={12} />, label: 'Brand',    badge: undefined },
                       { id: 'thumbnail',      icon: <Camera size={12} />,   label: 'Frame',    badge: undefined },
+                      { id: 'export',         icon: <Download size={12} />, label: 'Export',   badge: undefined },
                     ] as { id: string; icon: React.ReactNode; label: string; badge?: string }[]).map(({ id, icon, label, badge }) => (
                       <Tooltip key={id} text={label} position="bottom">
                         <button

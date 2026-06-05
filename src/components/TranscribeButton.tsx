@@ -56,7 +56,7 @@ function computeOverallPct(msg: string): number | null {
 
 export default function TranscribeButton({ videoFile, videoDuration, onTranscribed }: Props) {
   const [phase, setPhase] = useState<Phase>(PHASES.idle)
-  const [status, setStatus] = useState('')
+  const [, setStatus] = useState('')
   const [overallPct, setOverallPct] = useState(0)
   const [error, setError] = useState<string | null>(null)
 

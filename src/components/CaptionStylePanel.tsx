@@ -121,6 +121,9 @@ export default function CaptionStylePanel({ style, onChange }: Props) {
                 <SelectItem value="bounce">Bounce</SelectItem>
                 <SelectItem value="fade">Fade</SelectItem>
                 <SelectItem value="glow">Neon Glow</SelectItem>
+                <SelectItem value="shake">Shake</SelectItem>
+                <SelectItem value="punch">Punch</SelectItem>
+                <SelectItem value="glitch">Glitch RGB</SelectItem>
               </SelectContent>
             </Select>
           </div>

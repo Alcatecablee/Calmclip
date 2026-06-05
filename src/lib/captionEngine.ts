@@ -37,7 +37,7 @@ export interface CaptionStyle {
   shadowColor: string
   shadowBlur: number
   position: 'top' | 'center' | 'bottom'
-  animation: 'none' | 'scale' | 'bounce' | 'fade' | 'glow'
+  animation: 'none' | 'scale' | 'bounce' | 'fade' | 'glow' | 'shake' | 'punch' | 'glitch'
   bgEnabled: boolean
   bgColor: string
   bgRadius: number
@@ -172,6 +172,132 @@ export const CAPTION_PRESETS: Record<string, CaptionStyle> = {
     bgRadius: 0,
     wordsPerGroup: 3,
   },
+  hormozi: {
+    id: 'hormozi',
+    name: 'Hormozi',
+    description: 'Word-by-word pill pop with yellow keyword highlight',
+    fontFamily: 'Impact, "Arial Black", sans-serif',
+    fontSize: 68,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+    highlightColor: '#FFEE00',
+    strokeColor: '#000000',
+    strokeWidth: 5,
+    shadowColor: 'rgba(0,0,0,0.9)',
+    shadowBlur: 4,
+    position: 'center',
+    animation: 'punch',
+    bgEnabled: true,
+    bgColor: 'rgba(0,0,0,0.88)',
+    bgRadius: 10,
+    wordsPerGroup: 1,
+  },
+  shake: {
+    id: 'shake',
+    name: 'Shake',
+    description: 'High energy jitter on each word hit',
+    fontFamily: 'Impact, "Arial Black", sans-serif',
+    fontSize: 60,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+    highlightColor: '#FF3B30',
+    strokeColor: '#000000',
+    strokeWidth: 5,
+    shadowColor: 'rgba(0,0,0,0.8)',
+    shadowBlur: 8,
+    position: 'center',
+    animation: 'shake',
+    bgEnabled: false,
+    bgColor: 'rgba(0,0,0,0.0)',
+    bgRadius: 0,
+    wordsPerGroup: 2,
+  },
+  smash: {
+    id: 'smash',
+    name: 'Smash Cut',
+    description: 'Slams in large then snaps to size. Ae-inspired',
+    fontFamily: '"Arial Black", Impact, sans-serif',
+    fontSize: 72,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+    highlightColor: '#FF9500',
+    strokeColor: '#000000',
+    strokeWidth: 6,
+    shadowColor: 'rgba(0,0,0,0.9)',
+    shadowBlur: 10,
+    position: 'center',
+    animation: 'punch',
+    bgEnabled: false,
+    bgColor: 'rgba(0,0,0,0.0)',
+    bgRadius: 0,
+    wordsPerGroup: 2,
+  },
+  outlined: {
+    id: 'outlined',
+    name: 'Outlined',
+    description: 'Thick stroke, no bg. Legible on any footage',
+    fontFamily: '"Arial Black", "Helvetica Neue", sans-serif',
+    fontSize: 54,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+    highlightColor: '#FFEE00',
+    strokeColor: '#000000',
+    strokeWidth: 8,
+    shadowColor: 'rgba(0,0,0,0.3)',
+    shadowBlur: 2,
+    position: 'bottom',
+    animation: 'none',
+    bgEnabled: false,
+    bgColor: 'rgba(0,0,0,0.0)',
+    bgRadius: 0,
+    wordsPerGroup: 4,
+  },
+  glitch: {
+    id: 'glitch',
+    name: 'Glitch',
+    description: 'RGB fringe split on active word. Digital Ae look',
+    fontFamily: 'Impact, "Arial Black", sans-serif',
+    fontSize: 58,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+    highlightColor: '#FFFFFF',
+    strokeColor: '#000000',
+    strokeWidth: 4,
+    shadowColor: 'rgba(0,0,0,0.7)',
+    shadowBlur: 6,
+    position: 'center',
+    animation: 'glitch',
+    bgEnabled: false,
+    bgColor: 'rgba(0,0,0,0.0)',
+    bgRadius: 0,
+    wordsPerGroup: 3,
+  },
+  typewriter: {
+    id: 'typewriter',
+    name: 'Typewriter',
+    description: 'Words fade in cleanly over a dark subtitle bar',
+    fontFamily: '"Courier New", Courier, monospace',
+    fontSize: 40,
+    fontWeight: '700',
+    textTransform: 'none',
+    color: '#FFFFFF',
+    highlightColor: '#00FF88',
+    strokeColor: '#000000',
+    strokeWidth: 3,
+    shadowColor: 'rgba(0,0,0,0.8)',
+    shadowBlur: 6,
+    position: 'bottom',
+    animation: 'fade',
+    bgEnabled: true,
+    bgColor: 'rgba(0,0,0,0.75)',
+    bgRadius: 6,
+    wordsPerGroup: 6,
+  },
 }
 
 /**
@@ -292,6 +418,21 @@ export function drawCaptions(
       } else if (style.animation === 'bounce') {
         const bounce = -8 * Math.sin(animationProgress * Math.PI)
         ctx.translate(0, bounce)
+      } else if (style.animation === 'fade') {
+        ctx.globalAlpha = Math.min(1, animationProgress * 4)
+      } else if (style.animation === 'shake') {
+        const intensity = 3 * (1 - Math.min(1, animationProgress * 2))
+        ctx.translate(
+          Math.sin(animationProgress * Math.PI * 7) * intensity,
+          Math.cos(animationProgress * Math.PI * 5) * intensity,
+        )
+      } else if (style.animation === 'punch') {
+        const overshoot = animationProgress < 0.25
+          ? 1.4 - 1.6 * animationProgress
+          : 1 + 0.06 * Math.sin((animationProgress - 0.25) * Math.PI / 0.75)
+        ctx.translate(centerX, centerY)
+        ctx.scale(overshoot, overshoot)
+        ctx.translate(-centerX, -centerY)
       }
     }
 
@@ -325,6 +466,21 @@ export function drawCaptions(
       ctx.globalAlpha = 0.6
       ctx.fillText(word.text, currentX, baseY)
       ctx.globalAlpha = 1
+    }
+
+    // RGB split glitch extra pass for active
+    if (isActive && style.animation === 'glitch') {
+      const offset = 3 + 2 * Math.abs(Math.sin(animationProgress * Math.PI * 6))
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
+      ctx.globalAlpha = 0.82
+      ctx.fillStyle = '#FF0044'
+      ctx.fillText(word.text, currentX - offset, baseY)
+      ctx.fillStyle = '#00EEFF'
+      ctx.fillText(word.text, currentX + offset, baseY)
+      ctx.globalAlpha = 1
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillText(word.text, currentX, baseY)
     }
 
     ctx.restore()

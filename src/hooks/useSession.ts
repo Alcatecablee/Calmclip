@@ -5,6 +5,7 @@ import type { LoudnessTarget } from '../lib/loudness'
 import type { BlurRegion } from '../components/FaceBlurPanel'
 import type { SilenceSegment } from '../lib/silenceCutter'
 import type { WatermarkConfig } from '../components/WatermarkPanel'
+import type { Word, CaptionStyle } from '../lib/captionEngine'
 
 export interface SessionSaveSnapshot {
   trimStart:      number
@@ -19,6 +20,8 @@ export interface SessionSaveSnapshot {
   denoiseAudio:   boolean
   manualCuts:     SilenceSegment[]
   watermark:      WatermarkConfig | null
+  words:          Word[]
+  captionStyle:   CaptionStyle
 }
 
 interface UseSessionParams {
@@ -81,6 +84,8 @@ export function useSession({ file, step, saveSnapshot, onApplySession }: UseSess
         removeSilence:  snap.removeSilence,
         denoiseAudio:   snap.denoiseAudio,
         manualCuts:     snap.manualCuts,
+        words:          snap.words,
+        captionStyle:   snap.captionStyle,
         watermark: snap.watermark
           ? {
               file:     snap.watermark.file,
@@ -106,6 +111,7 @@ export function useSession({ file, step, saveSnapshot, onApplySession }: UseSess
     saveSnapshot.stripMeta, saveSnapshot.blurRegions,
     saveSnapshot.silenceSegs, saveSnapshot.removeSilence,
     saveSnapshot.denoiseAudio, saveSnapshot.manualCuts, saveSnapshot.watermark,
+    saveSnapshot.words, saveSnapshot.captionStyle,
   ])
 
   return {
