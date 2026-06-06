@@ -221,8 +221,6 @@ export default function TrimSlider({
 
   if (duration <= 0) return null
 
-  const startPct = (start / duration) * 100
-  const endPct   = (end   / duration) * 100
   const hasMarks = silenceMarks.length > 0 || manualMarks.length > 0
 
   return (
