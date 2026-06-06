@@ -97,6 +97,26 @@ export function generateSubtitles(result: TranscriptResult, format: SubtitleForm
   return `WEBVTT\n\n${body}\n`
 }
 
+export function downloadPlainText(
+  result:   TranscriptResult,
+  baseName: string,
+): void {
+  if (!result.text) {
+    throw new Error('No transcript text available to export. Run transcription first.')
+  }
+  const fileName = baseName.replace(/\.[^.]+$/, '') + '.txt'
+  const blob     = new Blob([result.text], { type: 'text/plain' })
+  const url      = URL.createObjectURL(blob)
+  try {
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = fileName
+    a.click()
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  }
+}
+
 export function downloadSubtitles(
   result:   TranscriptResult,
   format:   SubtitleFormat,

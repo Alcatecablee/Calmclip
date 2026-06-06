@@ -12,8 +12,9 @@ export default function ThumbnailExtractor({ videoRef, trimStart, trimEnd }: Pro
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const trimDur   = Math.max(0, trimEnd - trimStart)
 
-  const [offset,   setOffset]   = useState(0)
-  const [captured, setCaptured] = useState(false)
+  const [offset,       setOffset]       = useState(0)
+  const [captured,     setCaptured]     = useState(false)
+  const [captureError, setCaptureError] = useState<string | null>(null)
 
   function handleSeek(rel: number) {
     setOffset(rel)
@@ -28,8 +29,14 @@ export default function ThumbnailExtractor({ videoRef, trimStart, trimEnd }: Pro
     const canvas = canvasRef.current
     if (!video || !canvas) return
 
-    canvas.width  = video.videoWidth  || 1280
-    canvas.height = video.videoHeight || 720
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      setCaptureError('No video track in this file. Frame capture is not available for audio-only files.')
+      return
+    }
+
+    setCaptureError(null)
+    canvas.width  = video.videoWidth
+    canvas.height = video.videoHeight
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
@@ -84,6 +91,12 @@ export default function ThumbnailExtractor({ videoRef, trimStart, trimEnd }: Pro
         {captured ? <Check size={13} /> : <Camera size={13} />}
         {captured ? 'Saved as PNG' : 'Capture frame as PNG'}
       </button>
+
+      {captureError && (
+        <p className="text-xs" style={{ color: '#ef4444' }}>
+          {captureError}
+        </p>
+      )}
 
       <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
         Drag the slider to seek, then capture. Downloads as a full-resolution PNG.

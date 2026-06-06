@@ -10,11 +10,12 @@ export interface DropZoneHandle {
 }
 
 const VIDEO_EXTS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.ts', '.wmv']
+const AUDIO_EXTS = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.opus']
 
-function isVideoFile(f: File): boolean {
-  if (f.type.startsWith('video/')) return true
+function isAcceptedFile(f: File): boolean {
+  if (f.type.startsWith('video/') || f.type.startsWith('audio/')) return true
   const ext = '.' + f.name.split('.').pop()?.toLowerCase()
-  return VIDEO_EXTS.includes(ext)
+  return VIDEO_EXTS.includes(ext) || AUDIO_EXTS.includes(ext)
 }
 
 const DropZone = forwardRef<DropZoneHandle, Props>(function DropZone({ onFile }, ref) {
@@ -28,7 +29,7 @@ const DropZone = forwardRef<DropZoneHandle, Props>(function DropZone({ onFile },
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
     const f = files[0]
-    if (!isVideoFile(f)) return
+    if (!isAcceptedFile(f)) return
     onFile(f)
   }
 
@@ -54,7 +55,7 @@ const DropZone = forwardRef<DropZoneHandle, Props>(function DropZone({ onFile },
       <input
         ref={inputRef}
         type="file"
-        accept="video/*"
+        accept="video/*,audio/*"
         style={{ display: 'none' }}
         onChange={e => handleFiles(e.target.files)}
       />
@@ -69,7 +70,7 @@ const DropZone = forwardRef<DropZoneHandle, Props>(function DropZone({ onFile },
         </p>
         <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.7 }}>
           or <span style={{ color: 'var(--primary)', fontWeight: 500 }}>browse files</span>
-          <span style={{ color: 'var(--text-faint)' }}> · </span>MP4, MOV, WebM, MKV
+          <span style={{ color: 'var(--text-faint)' }}> · </span>MP4, MOV, WebM, MKV, MP3, WAV, M4A
         </p>
       </div>
     </div>

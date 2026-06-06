@@ -566,7 +566,7 @@ export default function App() {
       onDrop={e => {
         e.preventDefault()
         const f = e.dataTransfer.files[0]
-        if (f?.type.startsWith('video/')) handleFile(f)
+        if (f && (f.type.startsWith('video/') || f.type.startsWith('audio/'))) handleFile(f)
       }}
     >
       <header className={`navbar-header${step !== 'drop' ? ' navbar-header--slim' : ''}`}>
@@ -1620,15 +1620,15 @@ Selected: ${f.name} (${formatBytes(f.size)})`)
             dragCounter.current = 0
             setWindowDragging(false)
             const f = e.dataTransfer.files[0]
-            if (f?.type.startsWith('video/')) handleFile(f)
+            if (f && (f.type.startsWith('video/') || f.type.startsWith('audio/'))) handleFile(f)
           }}
         >
           <div className="drag-overlay-card">
             <FolderOpen size={30} color="var(--primary)" />
             <p className="drag-overlay-title">
-              {step === 'drop' ? 'Drop your video' : 'Drop to replace video'}
+              {step === 'drop' ? 'Drop your file' : 'Drop to replace file'}
             </p>
-            <p className="drag-overlay-sub">MP4, MOV, WebM, MKV and more</p>
+            <p className="drag-overlay-sub">MP4, MOV, WebM, MKV, MP3, WAV, M4A and more</p>
           </div>
         </div>
       )}

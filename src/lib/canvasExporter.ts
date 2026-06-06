@@ -60,6 +60,12 @@ export async function exportVideoWithCaptions({
   denoiseAudio   = false,
 }: ExportOptions): Promise<Blob> {
 
+  if (videoElement.videoWidth === 0 && videoElement.videoHeight === 0) {
+    throw new Error(
+      'This file has no video track. Video export is not available for audio-only files. Use the transcript panel to download your transcript as TXT, SRT, or VTT.'
+    )
+  }
+
   // ── Pre-load watermark image (async, before Promise) ──────────────────
   let wmImage: HTMLImageElement | null = null
   if (watermark?.file) {

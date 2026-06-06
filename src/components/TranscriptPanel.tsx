@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
 import type { TranscriptResult } from '../lib/whisper'
-import { downloadSubtitles } from '../lib/subtitleExport'
+import { downloadSubtitles, downloadPlainText } from '../lib/subtitleExport'
 
 interface Props {
   result:   TranscriptResult
@@ -20,6 +20,15 @@ export default function TranscriptPanel({ result, onSeek, fileName }: Props) {
       downloadSubtitles(result, format, fileName)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Subtitle export failed.')
+    }
+  }
+
+  function handleExportTxt() {
+    setExportError(null)
+    try {
+      downloadPlainText(result, fileName)
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Text export failed.')
     }
   }
 
@@ -69,37 +78,51 @@ export default function TranscriptPanel({ result, onSeek, fileName }: Props) {
         </>
       )}
 
-      {hasTimestamps && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
-            Export subtitles:
-          </span>
-          <button
-            onClick={() => handleExport('srt')}
-            className="flex items-center gap-1.5"
-            style={{
-              fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
-              background: 'var(--bg-surface)', border: '1px solid var(--border)',
-              borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-            }}
-          >
-            <Download size={11} />
-            SRT
-          </button>
-          <button
-            onClick={() => handleExport('vtt')}
-            className="flex items-center gap-1.5"
-            style={{
-              fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
-              background: 'var(--bg-surface)', border: '1px solid var(--border)',
-              borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-            }}
-          >
-            <Download size={11} />
-            VTT
-          </button>
-        </div>
-      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+          Export transcript:
+        </span>
+        <button
+          onClick={handleExportTxt}
+          className="flex items-center gap-1.5"
+          style={{
+            fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
+            background: 'var(--bg-surface)', border: '1px solid var(--border)',
+            borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+          }}
+        >
+          <Download size={11} />
+          TXT
+        </button>
+        {hasTimestamps && (
+          <>
+            <button
+              onClick={() => handleExport('srt')}
+              className="flex items-center gap-1.5"
+              style={{
+                fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
+                background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+              }}
+            >
+              <Download size={11} />
+              SRT
+            </button>
+            <button
+              onClick={() => handleExport('vtt')}
+              className="flex items-center gap-1.5"
+              style={{
+                fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
+                background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+              }}
+            >
+              <Download size={11} />
+              VTT
+            </button>
+          </>
+        )}
+      </div>
 
       {exportError && (
         <p className="text-xs" style={{ color: '#ef4444' }}>

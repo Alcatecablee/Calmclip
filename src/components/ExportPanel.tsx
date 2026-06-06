@@ -80,7 +80,7 @@ export default function ExportPanel({
   onExported,
   loudnessTarget = 'off',
   denoiseAudio   = false,
-  onProGate,
+  onProGate: _onProGate,
   isPro          = false,
 }: Props) {
   const [phase, setPhase]             = useState<'idle' | 'processing' | 'done'>('idle')
