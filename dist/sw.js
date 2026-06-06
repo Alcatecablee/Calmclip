@@ -10,7 +10,7 @@ const PRECACHE   = 'calmclip-pre-v4'
 const RUNTIME    = 'calmclip-run-v4'
 const CDN_CACHE  = 'calmclip-cdn-v4'
 // Injected by scripts/update-sitemap.mjs on every production build.
-const SITEMAP_LASTMOD = '2026-06-05'
+const SITEMAP_LASTMOD = '2026-06-06'
 const SHARE_CACHE = 'calmclip-share'
 const ALL_CACHES = [PRECACHE, RUNTIME, CDN_CACHE]
 // SHARE_CACHE is intentionally not in ALL_CACHES: its entries are short-lived

@@ -99,6 +99,11 @@ self.addEventListener('message', async (event: MessageEvent) => {
         )
         _usedWebGPU = false
       }
+
+      // Notify the main thread that this model is now fully in the browser cache.
+      // The main thread writes the model sentinel to IndexedDB so getBestCachedModel()
+      // can verify and promote to this model on the next session.
+      self.postMessage({ type: 'model-cached', modelId })
     }
 
     self.postMessage({ type: 'transcribing', durationSec, backend: _usedWebGPU ? 'webgpu' : 'wasm' })

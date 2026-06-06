@@ -19,8 +19,7 @@ import {
   type WarmingStatus,
 } from '../lib/modelWarmer'
 
-const LANG_PREF_KEY  = 'calmclip_lang_pref'
-const MODEL_PREF_KEY = 'calmclip_model_pref'
+const LANG_PREF_KEY = 'calmclip_lang_pref'
 
 function loadLangPref(): string {
   try { return localStorage.getItem(LANG_PREF_KEY) ?? 'auto' } catch { return 'auto' }
@@ -28,19 +27,6 @@ function loadLangPref(): string {
 
 function saveLangPref(code: string): void {
   try { localStorage.setItem(LANG_PREF_KEY, code) } catch { /* ignore */ }
-}
-
-function loadModelPref(): WhisperModelId {
-  try {
-    const stored = localStorage.getItem(MODEL_PREF_KEY)
-    const valid: WhisperModelId[] = ['Xenova/whisper-tiny', 'Xenova/whisper-base', 'Xenova/whisper-small', 'Xenova/whisper-medium']
-    if (stored && (valid as string[]).includes(stored)) return stored as WhisperModelId
-  } catch { /* ignore */ }
-  return 'Xenova/whisper-base'
-}
-
-function saveModelPref(id: WhisperModelId): void {
-  try { localStorage.setItem(MODEL_PREF_KEY, id) } catch { /* ignore */ }
 }
 
 interface Props {
@@ -69,7 +55,7 @@ const TRANSCRIBE_TIPS = [
 export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onResult, onCaption }: Props) {
   const [status, setStatus]       = useState<WhisperStatus>({ phase: 'idle' })
   const [elapsed, setElapsed]     = useState(0)
-  const [modelId, setModelId]     = useState<WhisperModelId>(loadModelPref)
+  const [modelId, setModelId]     = useState<WhisperModelId>('Xenova/whisper-base')
   const [language, setLanguage]       = useState<string>(loadLangPref)
   const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
   const workerRef                     = useRef<ReturnType<typeof createWhisperWorker> | null>(null)
@@ -114,20 +100,11 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
     return () => unsubscribeWarmingStatus(setWarmingStatus)
   }, [])
 
-  // Auto-upgrade to the best already-cached model on mount (Phase 3).
-  // Only promotes from the default (base). A user who explicitly chose tiny
-  // for speed keeps their preference; we do not override a deliberate choice.
+  // Auto-select the best already-cached model on mount (Phase 3).
+  // Model selection is fully automatic: no manual override exists.
   useEffect(() => {
     getBestCachedModel().then(best => {
-      if (best !== 'Xenova/whisper-base') {
-        setModelId(prev => {
-          if (prev === 'Xenova/whisper-base') {
-            saveModelPref(best)
-            return best
-          }
-          return prev
-        })
-      }
+      setModelId(best)
     }).catch(() => {})
   }, [])
 
@@ -161,7 +138,7 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
     }
 
     setStatus({ phase: 'extracting-audio' })
-    recordToolUsage('transcribe').catch(() => {})
+    await recordToolUsage('transcribe').catch(() => {})
     try {
       const audio = await extractAudioForWhisper(file, trimStart, trimEnd)
       if (!workerRef.current) {
@@ -232,106 +209,49 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
     <div className="flex flex-col gap-3">
 
       {!busy && (
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-4 gap-1">
-            {WHISPER_MODELS.map(m => (
-              <button
-                key={m.id}
-                onClick={() => {
-                  setModelId(m.id)
-                  saveModelPref(m.id)
-                  if (workerRef.current) {
-                    workerRef.current.terminate()
-                    workerRef.current = null
-                  }
-                  if (status.phase === 'done' || status.phase === 'error') {
-                    setStatus({ phase: 'idle' })
-                  }
-                }}
-                className="flex flex-col items-center gap-0.5 px-1 py-2 rounded-lg text-xs transition-all"
-                style={{
-                  background: modelId === m.id ? 'var(--primary-a10)' : 'var(--bg-surface)',
-                  border:     `1px solid ${modelId === m.id ? 'var(--primary)' : 'var(--border)'}`,
-                  color:      modelId === m.id ? 'var(--primary)' : 'var(--text-faint)',
-                  cursor:     'pointer',
-                }}
-              >
-                <span className="font-medium">{m.label}</span>
-                <span style={{ fontSize: 9, opacity: 0.7 }}>{m.size}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="whisper-lang"
-              style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
-            >
-              Language
-            </label>
-            <select
-              id="whisper-lang"
-              value={language}
-              onChange={e => {
-                setLanguage(e.target.value)
-                saveLangPref(e.target.value)
-                if (workerRef.current) {
-                  workerRef.current.terminate()
-                  workerRef.current = null
-                }
-                if (status.phase === 'done' || status.phase === 'error') {
-                  setStatus({ phase: 'idle' })
-                }
-              }}
-              style={{
-                width:           '100%',
-                height:          32,
-                padding:         '0 8px',
-                borderRadius:    6,
-                border:          '1px solid var(--border)',
-                background:      'var(--bg-surface)',
-                color:           'var(--text-muted)',
-                fontSize:        13,
-                cursor:          'pointer',
-                outline:         'none',
-                appearance:      'none',
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.35)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
-                backgroundRepeat:   'no-repeat',
-                backgroundPosition: 'right 8px center',
-                paddingRight:       28,
-              }}
-            >
-              {WHISPER_LANGUAGES.map(l => (
-                <option key={l.code} value={l.code}>{l.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div
-            className="rounded px-2 py-2 text-xs flex flex-col gap-1"
-            style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="whisper-lang"
+            style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
           >
-            <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
-                {selectedModel.label} model
-              </span>
-              <span
-                className="px-1.5 py-0.5 rounded text-xs"
-                style={{ background: 'var(--primary-a10)', color: 'var(--primary)', fontSize: 10 }}
-              >
-                {selectedModel.speed}
-              </span>
-            </div>
-            <p style={{ color: 'var(--text-faint)', lineHeight: 1.45 }}>
-              {selectedModel.description}
-            </p>
-            {selectedModel.warning && (
-              <div className="flex items-start gap-1.5 mt-0.5" style={{ color: '#f59e0b' }}>
-                <AlertTriangle size={10} className="mt-0.5 flex-shrink-0" />
-                <span style={{ fontSize: 10, lineHeight: 1.4 }}>{selectedModel.warning}</span>
-              </div>
-            )}
-          </div>
+            Language
+          </label>
+          <select
+            id="whisper-lang"
+            value={language}
+            onChange={e => {
+              setLanguage(e.target.value)
+              saveLangPref(e.target.value)
+              if (workerRef.current) {
+                workerRef.current.terminate()
+                workerRef.current = null
+              }
+              if (status.phase === 'done' || status.phase === 'error') {
+                setStatus({ phase: 'idle' })
+              }
+            }}
+            style={{
+              width:           '100%',
+              height:          32,
+              padding:         '0 8px',
+              borderRadius:    6,
+              border:          '1px solid var(--border)',
+              background:      'var(--bg-surface)',
+              color:           'var(--text-muted)',
+              fontSize:        13,
+              cursor:          'pointer',
+              outline:         'none',
+              appearance:      'none',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.35)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+              backgroundRepeat:   'no-repeat',
+              backgroundPosition: 'right 8px center',
+              paddingRight:       28,
+            }}
+          >
+            {WHISPER_LANGUAGES.map(l => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
         </div>
       )}
 

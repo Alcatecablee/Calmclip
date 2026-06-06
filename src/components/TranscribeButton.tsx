@@ -17,24 +17,7 @@ import {
   type WarmingStatus,
 } from '@/lib/modelWarmer'
 
-const MODEL_PREF_KEY = 'calmclip_model_pref'
 const LANG_PREF_KEY  = 'calmclip_lang_pref'
-
-function loadModelPref(): WhisperModelId {
-  try {
-    const stored = localStorage.getItem(MODEL_PREF_KEY)
-    const valid: WhisperModelId[] = [
-      'Xenova/whisper-tiny', 'Xenova/whisper-base',
-      'Xenova/whisper-small', 'Xenova/whisper-medium',
-    ]
-    if (stored && (valid as string[]).includes(stored)) return stored as WhisperModelId
-  } catch { /* ignore */ }
-  return 'Xenova/whisper-base'
-}
-
-function saveModelPref(id: WhisperModelId): void {
-  try { localStorage.setItem(MODEL_PREF_KEY, id) } catch { /* ignore */ }
-}
 
 function loadLangPref(): string {
   try { return localStorage.getItem(LANG_PREF_KEY) ?? 'auto' } catch { return 'auto' }
@@ -92,27 +75,15 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
   const [, setStatus]               = useState('')
   const [overallPct, setOverallPct] = useState(0)
   const [error, setError]           = useState<string | null>(null)
-  const [modelId, setModelId]       = useState<WhisperModelId>(loadModelPref)
+  const [modelId, setModelId]       = useState<WhisperModelId>('Xenova/whisper-base')
   const [language, setLanguage]     = useState<string>(loadLangPref)
   const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
   const [pillDismissed, setPillDismissed] = useState(false)
   const fallbackIntervalRef         = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Auto-upgrade to the best already-cached model on mount.
-  // Only promotes from the default (base). A user who explicitly chose tiny
-  // for speed keeps their preference; we do not override a deliberate choice.
+  // Auto-select the best already-cached model on mount.
   useEffect(() => {
-    getBestCachedModel().then(best => {
-      if (best !== 'Xenova/whisper-base') {
-        setModelId(prev => {
-          if (prev === 'Xenova/whisper-base') {
-            saveModelPref(best)
-            return best
-          }
-          return prev
-        })
-      }
-    }).catch(() => {})
+    getBestCachedModel().then(best => setModelId(best)).catch(() => {})
   }, [])
 
   // Subscribe to background warming status for the pill indicator.
@@ -264,30 +235,6 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
 
   return (
     <div className="space-y-2">
-      {/* Model selector: 4 compact buttons, one per Whisper model */}
-      <div className="grid grid-cols-4 gap-1">
-        {WHISPER_MODELS.map(m => (
-          <button
-            key={m.id}
-            disabled={isProcessing}
-            onClick={() => { setModelId(m.id); saveModelPref(m.id) }}
-            title={m.description + (m.warning ? ' ' + m.warning : '')}
-            className="rounded px-1 py-1.5 text-center transition-colors"
-            style={{
-              fontSize:   '10px',
-              background: modelId === m.id ? 'var(--primary)' : 'var(--bg-surface)',
-              color:      modelId === m.id ? 'var(--primary-foreground)' : 'var(--text-muted)',
-              border:     `1px solid ${modelId === m.id ? 'var(--primary)' : 'var(--border)'}`,
-              cursor:     isProcessing ? 'not-allowed' : 'pointer',
-              opacity:    isProcessing ? 0.5 : 1,
-            }}
-          >
-            <div className="font-semibold">{m.label}</div>
-            <div style={{ opacity: 0.75 }}>{m.size}</div>
-          </button>
-        ))}
-      </div>
-
       {/* Language selector */}
       <select
         disabled={isProcessing}
@@ -327,6 +274,12 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
             ? 'Re-transcribe'
             : 'Auto-Transcribe with Whisper'}
       </Button>
+
+      {!isProcessing && phase !== PHASES.error && (
+        <p className="text-center" style={{ fontSize: '10px', color: 'var(--text-faint)' }}>
+          Using Whisper {WHISPER_MODELS.find(m => m.id === modelId)?.label ?? 'Base'}
+        </p>
+      )}
 
       {isProcessing && (
         <div className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>

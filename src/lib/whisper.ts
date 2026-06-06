@@ -1,4 +1,5 @@
 import { loadFfmpeg, fetchFile } from './ffmpeg'
+import { writeModelSentinel } from './projectSession'
 
 export interface TranscriptChunk {
   text:       string
@@ -204,6 +205,8 @@ export function createWhisperWorker(
         },
         detectedLanguage: e.data.detectedLanguage ?? undefined,
       })
+    } else if (type === 'model-cached') {
+      writeModelSentinel(e.data.modelId).catch(() => {})
     } else if (type === 'error') {
       onStatus({ phase: 'error', message: e.data.message })
     }

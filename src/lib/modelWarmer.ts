@@ -121,15 +121,6 @@ export async function startWarmingQueue(currentModelId: WhisperModelId): Promise
       targets.push(hint.recommendedNextModel as WhisperModelId)
     }
 
-    // Upgrade tiny users to base even without a hint
-    if (
-      currentModelId === 'Xenova/whisper-tiny' &&
-      !cached.has('Xenova/whisper-base') &&
-      !targets.includes('Xenova/whisper-base')
-    ) {
-      targets.push('Xenova/whisper-base')
-    }
-
     // Warm small if the user transcribes frequently (score > 1.0 means used more than once recently)
     const transcribeScore = scores['transcribe'] ?? 0
     if (
