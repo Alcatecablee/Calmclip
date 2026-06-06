@@ -795,6 +795,17 @@ export default function App() {
               transition={{ duration: 0.28, ease: 'easeOut' }}
             >
               <div className="flex-1 flex items-center justify-center p-4 lg:p-8" style={{ minHeight: 0, overflow: 'hidden' }}>
+                {/* maxWidth keeps portrait/square previews from overflowing the available vertical space.
+                    Available height ≈ 100vh − navbar(65) − padding(64) − VideoControls(80) − toolbar(36) = 245px overhead.
+                    Width = availH × (w/h ratio), capped at the original maxWidth per ratio. */}
+                <div style={{
+                  width: '100%',
+                  maxWidth:
+                    ratio === '9:16' ? 'min(292px, calc((100vh - 245px) * 9 / 16))'
+                    : ratio === '1:1' ? 'min(520px, calc(100vh - 245px))'
+                    : ratio === '4:5' ? 'min(416px, calc((100vh - 245px) * 4 / 5))'
+                    : '100%',
+                }}>
                 <VideoPreview
                   videoRef={videoRef}
                   videoUrl={videoUrl}
@@ -814,6 +825,7 @@ export default function App() {
                   captionGroups={captionGroups}
                   captionStyle={captionStyle}
                 />
+                </div>
               </div>
               {step === 'edit' && duration > 0 && (
                 <div style={{
