@@ -36,9 +36,7 @@ export default function ChapterGenerator({ transcript }: Props) {
   const chapters = customChapters ?? detected
 
   function copyToClipboard() {
-    const text = chapters
-      .map(c => `${fmt(c.start)} ${c.title}`)
-      .join('\n')
+    const text = chapters.map(c => `${fmt(c.start)} ${c.title}`).join('\n')
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setClipboardError(false)
@@ -80,8 +78,6 @@ export default function ChapterGenerator({ transcript }: Props) {
       </p>
     )
   }
-
-  const ytText = chapters.map(c => `${fmt(c.start)} ${c.title}`).join('\n')
 
   return (
     <div className="flex flex-col gap-3">
