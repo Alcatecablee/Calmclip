@@ -295,16 +295,12 @@ export default function VideoPreview({
     }
   }
 
-  // Aspect ratio container style.
-  // Landscape (16:9): constrain by width, height computed from ratio.
-  // Portrait / square: constrain by height (maxHeight) so the box never taller than
-  // the viewport, then width is auto-computed from the ratio.
-  const MAX_PORTRAIT_H = 'calc(100vh - 180px)'
+  // Aspect ratio container style
   const aspectStyle: React.CSSProperties =
-    ratio === '9:16' ? { aspectRatio: '9/16', maxHeight: MAX_PORTRAIT_H, width: 'auto', maxWidth: '292px' }
-    : ratio === '1:1'  ? { aspectRatio: '1/1',  maxHeight: MAX_PORTRAIT_H, width: 'auto', maxWidth: '520px' }
-    : ratio === '4:5'  ? { aspectRatio: '4/5',  maxHeight: MAX_PORTRAIT_H, width: 'auto', maxWidth: '416px' }
-    : { aspectRatio: '16/9', maxWidth: '640px', width: '100%' }
+    ratio === '9:16' ? { aspectRatio: '9/16',  maxWidth: '292px' }
+    : ratio === '1:1'  ? { aspectRatio: '1/1',   maxWidth: '520px' }
+    : ratio === '4:5'  ? { aspectRatio: '4/5',   maxWidth: '416px' }
+    : { aspectRatio: '16/9', maxWidth: '640px' }
 
   // Ratio mismatch overlays
   const RATIO_AR_MAP: Record<string, number> = { '16:9': 16/9, '9:16': 9/16, '1:1': 1, '4:5': 4/5 }
@@ -337,7 +333,7 @@ export default function VideoPreview({
       ref={fullscreenRef}
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}
     >
-      <div style={{ position: 'relative', ...aspectStyle }}>
+      <div style={{ position: 'relative', ...aspectStyle, width: '100%' }}>
         {/* Checkerboard background */}
         <div style={{
           position:        'absolute',

@@ -523,7 +523,7 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="h-screen flex flex-col overflow-hidden"
       style={{ background: 'var(--bg-page)' }}
       onDragOver={e => e.preventDefault()}
       onDrop={e => {
