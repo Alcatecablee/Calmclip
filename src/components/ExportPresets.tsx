@@ -52,15 +52,16 @@ export function savePresetsToStorage(presets: ExportPreset[]): void {
 }
 
 interface Props {
-  ratio:     Ratio
-  cropMode:  CropMode
-  stripMeta: boolean
-  watermark: WatermarkConfig | null
-  onApply:   (preset: ExportPreset) => void
+  ratio:      Ratio
+  cropMode:   CropMode
+  stripMeta:  boolean
+  watermark:  WatermarkConfig | null
+  onApply:    (preset: ExportPreset) => void
+  onProGate?: () => void
 }
 
 export default function ExportPresets({
-  ratio, cropMode, stripMeta, watermark, onApply,
+  ratio, cropMode, stripMeta, watermark, onApply, onProGate,
 }: Props) {
   const [presets,     setPresets]     = useState<ExportPreset[]>(loadPresets)
   const [nameInput,   setNameInput]   = useState('')
@@ -157,7 +158,7 @@ export default function ExportPresets({
             : `${presets.length} saved preset${presets.length !== 1 ? 's' : ''}.`}
         </p>
         <button
-          onClick={() => { setSaving(s => !s); setSaveError(null) }}
+          onClick={() => { if (onProGate) { onProGate(); return } setSaving(s => !s); setSaveError(null) }}
           className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg"
           style={{
             background: saving ? 'var(--primary-a10)' : 'var(--bg-surface)',
@@ -168,6 +169,7 @@ export default function ExportPresets({
         >
           <Save size={11} />
           Save current
+          {onProGate && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}
         </button>
       </div>
 
@@ -288,7 +290,7 @@ export default function ExportPresets({
                         </span>
                       </div>
                       <button
-                        onClick={() => onApply(p)}
+                        onClick={() => { if (onProGate) { onProGate(); return } onApply(p) }}
                         className="text-xs px-2 py-0.5 rounded flex-shrink-0"
                         style={{
                           background: 'var(--primary-a10)',

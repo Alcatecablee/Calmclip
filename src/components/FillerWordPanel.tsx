@@ -1,25 +1,27 @@
 import { useState, useMemo } from 'react'
 import { Scissors, ChevronDown, ChevronUp } from 'lucide-react'
-import { detectFillerWords, FILLER_WORDS, type TranscriptResult, type TranscriptChunk } from '../lib/whisper'
+import { detectFillerWords, FILLER_WORDS_BY_LANGUAGE, type TranscriptResult, type TranscriptChunk } from '../lib/whisper'
 
 interface Props {
   transcript:      TranscriptResult
   removedFillers:  TranscriptChunk[]
   onToggle:        (chunks: TranscriptChunk[]) => void
+  language?:       string
+  onProGate?:      () => void
 }
 
-export default function FillerWordPanel({ transcript, removedFillers, onToggle }: Props) {
+export default function FillerWordPanel({ transcript, removedFillers, onToggle, language, onProGate }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [detectError, setDetectError] = useState<string | null>(null)
   const found = useMemo(() => {
     try {
       setDetectError(null)
-      return detectFillerWords(transcript.chunks)
+      return detectFillerWords(transcript.chunks, language)
     } catch (err) {
       setDetectError(err instanceof Error ? err.message : String(err))
       return [] as TranscriptChunk[]
     }
-  }, [transcript.chunks])
+  }, [transcript.chunks, language])
 
   if (detectError) {
     return (
@@ -75,11 +77,11 @@ export default function FillerWordPanel({ transcript, removedFillers, onToggle }
       )}
 
       <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
-        Detected: {FILLER_WORDS.slice(0, 5).join(', ')} and more.
+        Detected: {(FILLER_WORDS_BY_LANGUAGE[language ?? 'english'] ?? FILLER_WORDS_BY_LANGUAGE['english']).slice(0, 5).join(', ')} and more.
       </p>
 
       <button
-        onClick={() => onToggle(allRemoved ? [] : found)}
+        onClick={() => { if (onProGate && !allRemoved) { onProGate(); return } onToggle(allRemoved ? [] : found) }}
         className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg transition-all"
         style={{
           background: allRemoved ? 'var(--primary-a10)' : 'var(--bg-surface)',
@@ -91,6 +93,7 @@ export default function FillerWordPanel({ transcript, removedFillers, onToggle }
       >
         <Scissors size={11} />
         {allRemoved ? `Remove all ${found.length} filler words at export (on)` : `Remove all ${found.length} filler words at export`}
+        {onProGate && !allRemoved && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}
       </button>
 
       {allRemoved && (

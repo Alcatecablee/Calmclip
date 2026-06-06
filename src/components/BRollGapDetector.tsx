@@ -16,9 +16,10 @@ interface Props {
   trimEnd:      number
   silenceSegs:  SilenceSegment[]
   onSeek:       (time: number) => void
+  onProGate?:   () => void
 }
 
-export default function BRollGapDetector({ transcript, trimStart, trimEnd, silenceSegs, onSeek }: Props) {
+export default function BRollGapDetector({ transcript, trimStart, trimEnd, silenceSegs, onSeek, onProGate }: Props) {
   const [threshold, setThreshold] = useState(45)
   const [noted,     setNoted]     = useState<Set<string>>(new Set())
 
@@ -158,6 +159,7 @@ export default function BRollGapDetector({ transcript, trimStart, trimEnd, silen
       {gaps.length > 0 && (
         <button
           onClick={() => {
+            if (onProGate) { onProGate(); return }
             try {
               setExportError(null)
               exportCueSheet(gaps, noted, threshold)
@@ -185,6 +187,7 @@ export default function BRollGapDetector({ transcript, trimStart, trimEnd, silen
         >
           <Download size={11} />
           Export cue sheet (.csv)
+          {onProGate && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}
         </button>
       )}
 

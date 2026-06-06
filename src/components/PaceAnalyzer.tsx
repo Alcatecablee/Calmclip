@@ -23,11 +23,12 @@ function fmt(sec: number): string {
 }
 
 interface Props {
-  transcript: TranscriptResult | null
-  onSeek:     (time: number) => void
+  transcript:  TranscriptResult | null
+  onSeek:      (time: number) => void
+  onProGate?:  () => void
 }
 
-export default function PaceAnalyzer({ transcript, onSeek }: Props) {
+export default function PaceAnalyzer({ transcript, onSeek, onProGate }: Props) {
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const buckets = useMemo(() => {
     try {
@@ -44,6 +45,25 @@ export default function PaceAnalyzer({ transcript, onSeek }: Props) {
       <p className="text-xs" style={{ color: '#ef4444' }}>
         Pace analyzer error: {analyzeError}
       </p>
+    )
+  }
+
+  if (onProGate) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs" style={{ color: 'var(--text-faint)' }}>Words per minute over time</span>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>
+        </div>
+        <div style={{ height: 28, background: 'var(--border)', borderRadius: 4, opacity: 0.4 }} />
+        <button
+          onClick={onProGate}
+          className="text-xs w-full py-1.5 rounded-lg"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-faint)', cursor: 'pointer' }}
+        >
+          Unlock pace analyzer
+        </button>
+      </div>
     )
   }
 

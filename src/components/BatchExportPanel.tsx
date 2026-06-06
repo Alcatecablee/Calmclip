@@ -3,10 +3,11 @@ import type { BatchProgress } from '../lib/batchExport'
 import type { Ratio } from '../lib/ffmpeg'
 
 interface Props {
-  running:  boolean
-  progress: BatchProgress[]
-  onClick:  () => void
-  disabled: boolean
+  running:    boolean
+  progress:   BatchProgress[]
+  onClick:    () => void
+  disabled:   boolean
+  onProGate?: () => void
 }
 
 const RATIO_LABELS: Record<Ratio, string> = {
@@ -16,11 +17,11 @@ const RATIO_LABELS: Record<Ratio, string> = {
   '4:5':  'Instagram Portrait',
 }
 
-export default function BatchExportPanel({ running, progress, onClick, disabled }: Props) {
+export default function BatchExportPanel({ running, progress, onClick, disabled, onProGate }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <button
-        onClick={onClick}
+        onClick={() => { if (onProGate) { onProGate(); return } onClick() }}
         disabled={disabled || running}
         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-all"
         style={{
@@ -32,7 +33,7 @@ export default function BatchExportPanel({ running, progress, onClick, disabled 
       >
         {running
           ? <><Loader2 size={13} className="animate-spin" /> Exporting all ratios...</>
-          : <><Package size={13} /> Export all 4 ratios (16:9, 9:16, 1:1, 4:5)</>
+          : <><Package size={13} /> Export all 4 ratios (16:9, 9:16, 1:1, 4:5){onProGate && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}</>
         }
       </button>
 

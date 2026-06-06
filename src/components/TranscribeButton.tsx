@@ -43,7 +43,8 @@ interface Props {
   videoFile:      File | null
   videoDuration:  number
   onTranscribed:  (words: Word[]) => void
-  onResult?:      (result: TranscriptResult) => void
+  onResult?:      (result: TranscriptResult, language?: string) => void
+  onProGate?:     () => void
 }
 
 function computeOverallPct(msg: string): number | null {
@@ -70,7 +71,7 @@ function computeOverallPct(msg: string): number | null {
   return null
 }
 
-export default function TranscribeButton({ videoFile, videoDuration, onTranscribed, onResult }: Props) {
+export default function TranscribeButton({ videoFile, videoDuration, onTranscribed, onResult, onProGate }: Props) {
   const [phase, setPhase]           = useState<Phase>(PHASES.idle)
   const [, setStatus]               = useState('')
   const [overallPct, setOverallPct] = useState(0)
@@ -191,7 +192,8 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
           timestamp: [w.startTime, w.endTime] as [number, number | null],
         })),
       }
-      onResult(transcriptResult)
+      const resolvedLanguage = detectedLanguage ?? (language !== 'auto' ? language : undefined)
+      onResult(transcriptResult, resolvedLanguage)
     }
 
     // Phase 2: write capability hint so Phase 3 warming picks the right next model.
@@ -255,7 +257,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
       </select>
 
       <Button
-        onClick={handleTranscribe}
+        onClick={() => { if (onProGate && !isProcessing) { onProGate(); return } handleTranscribe() }}
         className="w-full font-semibold"
         style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
         size="sm"
@@ -273,6 +275,9 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
           : phase === PHASES.done
             ? 'Re-transcribe'
             : 'Auto-Transcribe with Whisper'}
+        {onProGate && !isProcessing && (
+          <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'rgba(255,255,255,0.22)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>
+        )}
       </Button>
 
       {!isProcessing && phase !== PHASES.error && (

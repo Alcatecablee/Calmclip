@@ -1,1 +1,1 @@
-- [TranscribeButton is the production transcription path](transcribe-path.md) — WhisperPanel.tsx is dead code; all progressive capability must be wired through TranscribeButton.tsx + whisperTranscribe.ts.
+- [Pro gating pattern](pro-gating.md) — Canva-style: pass `onProGate={!proActive ? openProModal : undefined}` to every Pro component; gate at the action button, not the UI render.

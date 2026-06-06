@@ -12,10 +12,11 @@ function fmt(sec: number): string {
 }
 
 interface Props {
-  transcript: TranscriptResult
+  transcript:  TranscriptResult
+  onProGate?:  () => void
 }
 
-export default function ChapterGenerator({ transcript }: Props) {
+export default function ChapterGenerator({ transcript, onProGate }: Props) {
   const [copied, setCopied] = useState(false)
   const [clipboardError, setClipboardError] = useState(false)
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
@@ -161,7 +162,7 @@ export default function ChapterGenerator({ transcript }: Props) {
       </div>
 
       <button
-        onClick={copyToClipboard}
+        onClick={() => { if (onProGate) { onProGate(); return } copyToClipboard() }}
         className="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-medium transition-all"
         style={{
           background: copied ? 'rgba(74,222,128,0.08)' : clipboardError ? 'rgba(239,68,68,0.08)' : 'var(--primary-a10)',
@@ -172,6 +173,7 @@ export default function ChapterGenerator({ transcript }: Props) {
       >
         {copied ? <Check size={12} /> : <Copy size={12} />}
         {copied ? 'Copied to clipboard' : clipboardError ? 'Copy failed: select the text above manually' : 'Copy for YouTube description'}
+        {onProGate && !copied && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'rgba(255,255,255,0.15)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}
       </button>
     </div>
   )

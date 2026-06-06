@@ -37,6 +37,7 @@ interface Props {
   onExported?:     (size: number) => void
   loudnessTarget?: LoudnessTarget
   denoiseAudio?:   boolean
+  onProGate?:      () => void
 }
 
 export default function ExportPanel({
@@ -57,6 +58,7 @@ export default function ExportPanel({
   onExported,
   loudnessTarget = 'off',
   denoiseAudio   = false,
+  onProGate,
 }: Props) {
   const [phase, setPhase]             = useState<'idle' | 'processing' | 'done'>('idle')
   const [progress, setProgress]       = useState(0)
@@ -150,12 +152,15 @@ export default function ExportPanel({
           )}
 
           <Button
-            onClick={handleExport}
+            onClick={() => { if (onProGate) { onProGate(); return } handleExport() }}
             className="w-full font-semibold"
             style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
           >
             <Film className="w-4 h-4 mr-2" />
             Export Video
+            {onProGate && (
+              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'rgba(255,255,255,0.22)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>
+            )}
           </Button>
           {(!captionGroups || captionGroups.length === 0) && (
             <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>

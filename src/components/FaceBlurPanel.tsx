@@ -16,11 +16,12 @@ interface Props {
   onChange:  (regions: BlurRegion[]) => void
   isDrawing?: boolean
   onStartDrawing?: () => void
+  onProGate?: () => void
 }
 
 let nextId = 1
 
-export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDrawing }: Props) {
+export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDrawing, onProGate }: Props) {
   const [adding,          setAdding]          = useState(false)
   const [label,           setLabel]           = useState('')
   const [xPct,            setXPct]            = useState('50')
@@ -166,6 +167,7 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
       {!adding && !isDrawing && (
         <button
           onClick={() => {
+            if (onProGate) { onProGate(); return }
             if (onStartDrawing) {
               onStartDrawing()
             } else {
@@ -179,6 +181,7 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
         >
           <Plus size={11} />
           Add blur region
+          {onProGate && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}
         </button>
       )}
 

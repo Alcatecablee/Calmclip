@@ -3,12 +3,11 @@ import { motion } from 'framer-motion'
 import {
   RotateCcw, Scissors, Camera, Layers,
   Volume2, VolumeX, EyeOff, Lock, Info,
-  Sparkles, Check, Keyboard, FolderOpen, Moon, Sun,
+  Sparkles, Check, Keyboard, FolderOpen,
   Clipboard, MonitorPlay, Captions, Download,
 } from 'lucide-react'
 import { AlertTriangle } from 'lucide-react'
 import DropZone, { type DropZoneHandle } from './components/DropZone'
-import { useTheme } from './lib/useTheme'
 import ProUnlockModal from './components/ProUnlockModal'
 import { isPro as checkIsPro, getProStatus, initPro } from './lib/pro'
 import TrimSlider from './components/TrimSlider'
@@ -57,6 +56,7 @@ import BRollGapDetector from './components/BRollGapDetector'
 import BatchExportPanel from './components/BatchExportPanel'
 import ExportPresets, { type ExportPreset } from './components/ExportPresets'
 import AIAssistPanel from './components/AIAssistPanel'
+import ChapterGenerator from './components/ChapterGenerator'
 import { PreExportReport, PostExportReport } from './components/ExportReport'
 import FileSizeReadout from './components/FileSizeReadout'
 import type { TranscriptResult, TranscriptChunk } from './lib/whisper'
@@ -72,7 +72,6 @@ function fmtDur(s: number): string {
 
 
 export default function App() {
-  const [theme, toggleTheme] = useTheme()
   const videoRef       = useRef<HTMLVideoElement>(null)
   const videoUrlRef    = useRef<string | null>(null)
   const pendingTrimRef = useRef<{ start: number; end: number } | null>(null)
@@ -140,6 +139,7 @@ export default function App() {
   const captionGroups = useMemo(() => groupWords(words, captionStyle.wordsPerGroup), [words, captionStyle.wordsPerGroup])
 
   const [transcriptResult, setTranscriptResult] = useState<TranscriptResult | null>(null)
+  const [transcriptLanguage, setTranscriptLanguage] = useState<string | undefined>(undefined)
   const [removedFillers,   setRemovedFillers]   = useState<TranscriptChunk[]>([])
   const [batchRunning,     setBatchRunning]     = useState(false)
   const [batchProgress,    setBatchProgress]    = useState<BatchProgress[]>([])
@@ -565,15 +565,6 @@ export default function App() {
         )}
 
         <div className="navbar-btn-group">
-          <Tooltip text="Toggle dark mode" position="bottom">
-            <button
-              onClick={toggleTheme}
-              className="navbar-icon-btn"
-              aria-label="Toggle dark mode"
-            >
-              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
-          </Tooltip>
           <Tooltip text="Keyboard shortcuts (?)" position="bottom">
             <button
               onClick={() => setShowShortcutsModal(true)}
@@ -1207,7 +1198,8 @@ export default function App() {
                               videoFile={file}
                               videoDuration={duration}
                               onTranscribed={ws => { setWords(ws); if (ws.length > 0) recordToolUsage('captions').catch(() => {}) }}
-                              onResult={r => setTranscriptResult(r)}
+                              onResult={(r, lang) => { setTranscriptResult(r); setTranscriptLanguage(lang) }}
+                              onProGate={!proActive ? openProModal : undefined}
                             />
 
                             {/* Step 2: Edit words */}
@@ -1231,7 +1223,7 @@ export default function App() {
                                 <div style={{ height: 1, background: 'var(--border-subtle)' }} />
                                 <div>
                                   <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Hook Score</p>
-                                  <HookScorer transcript={transcriptResult} />
+                                  <HookScorer transcript={transcriptResult} onProGate={!proActive ? openProModal : undefined} />
                                 </div>
 
                                 <div style={{ height: 1, background: 'var(--border-subtle)' }} />
@@ -1241,6 +1233,8 @@ export default function App() {
                                     transcript={transcriptResult}
                                     removedFillers={removedFillers}
                                     onToggle={setRemovedFillers}
+                                    language={transcriptLanguage}
+                                    onProGate={!proActive ? openProModal : undefined}
                                   />
                                 </div>
 
@@ -1250,6 +1244,7 @@ export default function App() {
                                   <PaceAnalyzer
                                     transcript={transcriptResult}
                                     onSeek={t => { if (videoRef.current) videoRef.current.currentTime = t }}
+                                    onProGate={!proActive ? openProModal : undefined}
                                   />
                                 </div>
 
@@ -1262,7 +1257,14 @@ export default function App() {
                                     trimEnd={trimEnd}
                                     silenceSegs={silenceSegs}
                                     onSeek={t => { if (videoRef.current) videoRef.current.currentTime = t }}
+                                    onProGate={!proActive ? openProModal : undefined}
                                   />
+                                </div>
+
+                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                                <div>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Chapter Generator</p>
+                                  <ChapterGenerator transcript={transcriptResult} onProGate={!proActive ? openProModal : undefined} />
                                 </div>
 
                                 <div style={{ height: 1, background: 'var(--border-subtle)' }} />
@@ -1306,6 +1308,7 @@ export default function App() {
                               fillerCuts={fillerCuts}
                               onExported={setExportedSize}
                               loudnessTarget={loudness}
+                              onProGate={!proActive ? openProModal : undefined}
                               denoiseAudio={denoiseAudio}
                             />
 
@@ -1326,6 +1329,7 @@ export default function App() {
                                 running={batchRunning}
                                 progress={batchProgress}
                                 disabled={!file || !videoRef.current}
+                                onProGate={!proActive ? openProModal : undefined}
                                 onClick={async () => {
                                   if (!videoRef.current || !file) return
                                   recordToolUsage('batchExport').catch(() => {})
@@ -1367,6 +1371,7 @@ export default function App() {
                                   setCropMode(preset.cropMode)
                                   setStripMeta(preset.stripMeta)
                                 }}
+                                onProGate={!proActive ? openProModal : undefined}
                               />
                             </div>
                           </div>
@@ -1416,6 +1421,7 @@ export default function App() {
                             onChange={setBlurRegions}
                             isDrawing={isDrawingBlur}
                             onStartDrawing={() => setIsDrawingBlur(true)}
+                            onProGate={!proActive ? openProModal : undefined}
                           />
                         </Section>
                       )}
@@ -1433,7 +1439,7 @@ export default function App() {
 
                       {openSection === 'watermark' && (
                         <Section icon={<Sparkles size={13} />} label="Watermark" tooltip="Overlay a logo or image on the exported video">
-                          <WatermarkPanel config={watermark} onChange={setWatermark} />
+                          <WatermarkPanel config={watermark} onChange={setWatermark} onProGate={!proActive ? openProModal : undefined} />
                         </Section>
                       )}
 

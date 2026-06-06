@@ -12,8 +12,9 @@ export interface WatermarkConfig {
 }
 
 interface Props {
-  config:   WatermarkConfig | null
-  onChange: (cfg: WatermarkConfig | null) => void
+  config:     WatermarkConfig | null
+  onChange:   (cfg: WatermarkConfig | null) => void
+  onProGate?: () => void
 }
 
 const POS_LABELS: Record<WatermarkPosition, string> = {
@@ -24,7 +25,7 @@ const POS_LABELS: Record<WatermarkPosition, string> = {
   'center':       'Center',
 }
 
-export default function WatermarkPanel({ config, onChange }: Props) {
+export default function WatermarkPanel({ config, onChange, onProGate }: Props) {
   const inputRef    = useRef<HTMLInputElement>(null)
   const [preview,   setPreview]   = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
@@ -89,7 +90,7 @@ export default function WatermarkPanel({ config, onChange }: Props) {
           onChange={handleFile}
         />
         <button
-          onClick={() => inputRef.current?.click()}
+          onClick={() => { if (onProGate) { onProGate(); return } inputRef.current?.click() }}
           className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-xs font-medium"
           style={{
             background: 'var(--bg-surface)',
@@ -108,6 +109,7 @@ export default function WatermarkPanel({ config, onChange }: Props) {
         >
           <Upload size={13} />
           Upload logo (PNG, WebP, JPEG)
+          {onProGate && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}
         </button>
         {fileError && (
           <p className="text-xs" style={{ color: '#ef4444' }}>{fileError}</p>

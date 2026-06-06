@@ -248,11 +248,60 @@ async function verifyCachedShard(modelId: string): Promise<boolean> {
   } catch { return false }
 }
 
-export const FILLER_WORDS = ['um', 'uh', 'like', 'you know', 'basically', 'actually', 'literally', 'sort of', 'kind of', 'right']
+// Languages whose scripts are Latin-based. Used to select the correct
+// text normalizer in detectFillerWords.
+const LATIN_SCRIPT_LANGUAGES = new Set([
+  'english', 'spanish', 'portuguese', 'french', 'german', 'italian',
+  'dutch', 'polish', 'turkish', 'swedish', 'norwegian', 'danish',
+])
 
-export function detectFillerWords(chunks: TranscriptChunk[]): TranscriptChunk[] {
+// Filler words keyed by the language code Whisper returns (lowercase, no
+// region suffix). Each list contains the exact forms Whisper outputs so
+// the exact-match comparison works without further normalisation.
+export const FILLER_WORDS_BY_LANGUAGE: Record<string, string[]> = {
+  english:    ['um', 'uh', 'like', 'you know', 'basically', 'actually', 'literally', 'sort of', 'kind of', 'right'],
+  spanish:    ['este', 'bueno', 'pues', 'o sea', 'osea', 'verdad'],
+  portuguese: ['tipo', 'sabe', 'assim', 'entao', 'então', 'né'],
+  french:     ['euh', 'ben', 'bah', 'quoi', 'enfin'],
+  german:     ['äh', 'ähm', 'halt', 'irgendwie', 'sozusagen'],
+  italian:    ['allora', 'cioè', 'cioe', 'praticamente', 'insomma'],
+  dutch:      ['eh', 'uhm', 'eigenlijk', 'gewoon', 'zeg maar'],
+  polish:     ['no', 'właśnie', 'znaczy', 'jakby'],
+  russian:    ['ну', 'вот', 'это', 'короче', 'типа'],
+  ukrainian:  ['ну', 'от', 'це', 'типу'],
+  arabic:     ['يعني', 'بس', 'اه'],
+  turkish:    ['yani', 'şey', 'falan'],
+  hindi:      ['मतलब', 'वो', 'तो', 'जैसे'],
+  chinese:    ['那个', '就是', '然后', '对吧', '嗯'],
+  japanese:   ['えっと', 'あの', 'その', 'なんか', 'ね'],
+  korean:     ['어', '그', '뭐', '이제', '음'],
+  swedish:    ['liksom', 'alltså', 'typ', 'asså'],
+  norwegian:  ['liksom', 'altså', 'sant'],
+  danish:     ['øh', 'altså', 'ligesom'],
+}
+
+// English list kept as a named export for backward compatibility.
+export const FILLER_WORDS = FILLER_WORDS_BY_LANGUAGE['english']
+
+// Normalize a chunk's text for exact-match comparison.
+// Latin-script languages: lowercase and strip non-letter characters other
+// than space and common accented letters. Non-Latin scripts only have
+// leading/trailing punctuation stripped so CJK, Arabic, Cyrillic etc.
+// are not zeroed out.
+function normalizeChunk(text: string, isLatin: boolean): string {
+  const t = text.trim().toLowerCase()
+  if (isLatin) {
+    return t.replace(/[^a-záàâäãéèêëíìîïóòôöõúùûüýñçœşğı ]/g, '').trim()
+  }
+  return t.replace(/^[.,!?;:'"()\-。、！？،؟]+|[.,!?;:'"()\-。、！？،؟]+$/g, '').trim()
+}
+
+export function detectFillerWords(chunks: TranscriptChunk[], language?: string): TranscriptChunk[] {
+  const lang = language ?? 'english'
+  const wordList = FILLER_WORDS_BY_LANGUAGE[lang] ?? FILLER_WORDS_BY_LANGUAGE['english']
+  const isLatin = LATIN_SCRIPT_LANGUAGES.has(lang)
   return chunks.filter(c => {
-    const word = (c.text ?? '').trim().toLowerCase().replace(/[^a-z ]/g, '')
-    return FILLER_WORDS.some(fw => word === fw)
+    const normalized = normalizeChunk(c.text ?? '', isLatin)
+    return wordList.some(fw => normalized === fw)
   })
 }

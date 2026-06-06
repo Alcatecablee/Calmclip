@@ -3,7 +3,8 @@ import type { TranscriptResult } from '../lib/whisper'
 import { scoreHook } from '../lib/hookScorer'
 
 interface Props {
-  transcript: TranscriptResult
+  transcript:  TranscriptResult
+  onProGate?:  () => void
 }
 
 function ScoreBar({ value }: { value: number }) {
@@ -31,7 +32,7 @@ function SignalRow({ label, pass, detail }: { label: string; pass: boolean; deta
   )
 }
 
-export default function HookScorer({ transcript }: Props) {
+export default function HookScorer({ transcript, onProGate }: Props) {
   const [scoreError, setScoreError] = useState<string | null>(null)
   const result = useMemo(() => {
     try {
@@ -42,6 +43,25 @@ export default function HookScorer({ transcript }: Props) {
       return null
     }
   }, [transcript])
+
+  if (onProGate) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs" style={{ color: 'var(--text-faint)' }}>First 30 seconds</span>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>
+        </div>
+        <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }} />
+        <button
+          onClick={onProGate}
+          className="text-xs w-full py-1.5 rounded-lg"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-faint)', cursor: 'pointer' }}
+        >
+          Unlock hook score
+        </button>
+      </div>
+    )
+  }
 
   if (scoreError) {
     return (
