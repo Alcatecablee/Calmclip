@@ -14,10 +14,13 @@ const GUMROAD_URL = import.meta.env.VITE_GUMROAD_URL as string | undefined
 
 const PRO_FEATURES = [
   '1080p export quality',
-  'Batch export (all ratios)',
+  'Batch export (all ratios at once)',
   'Region blur (face blur)',
   'Export presets',
   'Watermark overlay',
+  'AI speech transcription (Whisper, on-device)',
+  'Hook scorer, pace analyzer, filler word removal',
+  'B-roll gap detector and chapter generator',
 ]
 
 type Phase = 'idle' | 'verifying' | 'done' | 'error'

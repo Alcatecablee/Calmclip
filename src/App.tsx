@@ -9,7 +9,6 @@ import {
 import { AlertTriangle } from 'lucide-react'
 import DropZone, { type DropZoneHandle } from './components/DropZone'
 import { useTheme } from './lib/useTheme'
-import ProGate from './components/ProGate'
 import ProUnlockModal from './components/ProUnlockModal'
 import { isPro as checkIsPro, getProStatus, initPro } from './lib/pro'
 import TrimSlider from './components/TrimSlider'
@@ -51,6 +50,19 @@ import CaptionStylePanel from './components/CaptionStylePanel'
 import ExportPanel from './components/ExportPanel'
 import { groupWords, CAPTION_PRESETS } from './lib/captionEngine'
 import type { Word, CaptionStyle } from './lib/captionEngine'
+import TranscriptPanel from './components/TranscriptPanel'
+import HookScorer from './components/HookScorer'
+import FillerWordPanel from './components/FillerWordPanel'
+import PaceAnalyzer from './components/PaceAnalyzer'
+import BRollGapDetector from './components/BRollGapDetector'
+import ChapterGenerator from './components/ChapterGenerator'
+import BatchExportPanel from './components/BatchExportPanel'
+import ExportPresets, { type ExportPreset } from './components/ExportPresets'
+import AIAssistPanel from './components/AIAssistPanel'
+import { PreExportReport, PostExportReport } from './components/ExportReport'
+import FileSizeReadout from './components/FileSizeReadout'
+import type { TranscriptResult, TranscriptChunk } from './lib/whisper'
+import { batchExport, type BatchProgress } from './lib/batchExport'
 
 
 function fmtDur(s: number): string {
@@ -129,6 +141,20 @@ export default function App() {
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(CAPTION_PRESETS.boldPop)
   const captionGroups = useMemo(() => groupWords(words, captionStyle.wordsPerGroup), [words, captionStyle.wordsPerGroup])
 
+  const [transcriptResult, setTranscriptResult] = useState<TranscriptResult | null>(null)
+  const [removedFillers,   setRemovedFillers]   = useState<TranscriptChunk[]>([])
+  const [batchRunning,     setBatchRunning]     = useState(false)
+  const [batchProgress,    setBatchProgress]    = useState<BatchProgress[]>([])
+  const [videoWidth,       setVideoWidth]       = useState(0)
+  const [videoHeight,      setVideoHeight]      = useState(0)
+  const [exportedSize,     setExportedSize]     = useState(0)
+
+  const fillerCuts = useMemo<SilenceSegment[]>(() => (
+    removedFillers
+      .filter(c => c.timestamp[0] != null && c.timestamp[1] != null)
+      .map(c => ({ start: c.timestamp[0]!, end: c.timestamp[1]! }))
+  ), [removedFillers])
+
   const hasPip       = 'pictureInPictureEnabled' in document && (document as Document & { pictureInPictureEnabled: boolean }).pictureInPictureEnabled
   // Clipboard.write() is absent from older TS DOM lib versions; casting to unknown lets us
   // feature-detect it at runtime without a type error on environments where it is defined.
@@ -206,6 +232,9 @@ export default function App() {
     const url = URL.createObjectURL(f)
     videoUrlRef.current = url
     setFile(f)
+    setExportedSize(0)
+    setVideoWidth(0)
+    setVideoHeight(0)
     loadFfmpeg().then(() => {
       localStorage.setItem('calmclip_wasm_seen', '1')
       setFfLoaded(true)
@@ -271,6 +300,8 @@ export default function App() {
     if (!v || !videoUrl) return
     const onMeta = () => {
       setDuration(v.duration)
+      setVideoWidth(v.videoWidth)
+      setVideoHeight(v.videoHeight)
       if (pendingTrimRef.current !== null) {
         setTrimStart(pendingTrimRef.current.start)
         setTrimEnd(pendingTrimRef.current.end)
@@ -1157,41 +1188,174 @@ export default function App() {
                       {openSection === 'captions' && (
                         <Section icon={<Captions size={13} />} label="Captions" tooltip="Auto-transcribe speech or type a transcript, then style word-by-word captions" badge={words.length > 0 ? `${words.length} words` : undefined}>
                           <div className="flex flex-col gap-4">
+
+                            {/* Step 1: Transcribe */}
                             <TranscribeButton
                               videoFile={file}
                               videoDuration={duration}
                               onTranscribed={setWords}
+                              onResult={r => setTranscriptResult(r)}
                             />
+
+                            {/* Step 2: Edit words */}
                             <div style={{ height: 1, background: 'var(--border-subtle)' }} />
                             <CaptionEditor
                               words={words}
                               onWordsChange={setWords}
                               videoDuration={duration}
                             />
+
+                            {/* Step 3: Style */}
                             <div style={{ height: 1, background: 'var(--border-subtle)' }} />
                             <CaptionStylePanel
                               style={captionStyle}
                               onChange={setCaptionStyle}
                             />
+
+                            {/* Step 4: AI analysis — appears once transcription has run */}
+                            {transcriptResult && (
+                              <>
+                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                                <div>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Hook Score</p>
+                                  <HookScorer transcript={transcriptResult} />
+                                </div>
+
+                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                                <div>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Filler Words</p>
+                                  <FillerWordPanel
+                                    transcript={transcriptResult}
+                                    removedFillers={removedFillers}
+                                    onToggle={setRemovedFillers}
+                                  />
+                                </div>
+
+                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                                <div>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Pace Analyzer</p>
+                                  <PaceAnalyzer
+                                    transcript={transcriptResult}
+                                    onSeek={t => { if (videoRef.current) videoRef.current.currentTime = t }}
+                                  />
+                                </div>
+
+                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                                <div>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>B-Roll Gaps</p>
+                                  <BRollGapDetector
+                                    transcript={transcriptResult}
+                                    trimStart={trimStart}
+                                    trimEnd={trimEnd}
+                                    silenceSegs={silenceSegs}
+                                    onSeek={t => { if (videoRef.current) videoRef.current.currentTime = t }}
+                                  />
+                                </div>
+
+                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                                <div>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>AI Assist</p>
+                                  <AIAssistPanel transcript={transcriptResult} />
+                                </div>
+                              </>
+                            )}
+
                           </div>
                         </Section>
                       )}
 
                       {openSection === 'export' && (
                         <Section icon={<Download size={13} />} label="Export" tooltip="Render and download your video with captions baked in">
-                          <ExportPanel
-                            videoRef={videoRef}
-                            captionGroups={captionGroups}
-                            captionStyle={captionStyle}
-                            trimStart={trimStart}
-                            trimEnd={trimEnd}
-                            cropMode={cropMode}
-                            blurRegions={blurRegions}
-                            watermark={watermark}
-                            manualCuts={manualCuts}
-                            silenceSegs={silenceSegs}
-                            removeSilence={removeSilence}
-                          />
+                          <div className="flex flex-col gap-5">
+
+                            <PreExportReport
+                              videoWidth={videoWidth}
+                              videoHeight={videoHeight}
+                              trimDuration={Math.max(0, trimEnd - trimStart)}
+                              fileSize={file?.size || 0}
+                              hasAudio={hasAudio}
+                            />
+
+                            <ExportPanel
+                              videoRef={videoRef}
+                              captionGroups={captionGroups}
+                              captionStyle={captionStyle}
+                              trimStart={trimStart}
+                              trimEnd={trimEnd}
+                              cropMode={cropMode}
+                              blurRegions={blurRegions}
+                              watermark={watermark}
+                              manualCuts={manualCuts}
+                              silenceSegs={silenceSegs}
+                              removeSilence={removeSilence}
+                              ratio={ratio}
+                              onRatioChange={r => setRatio(r as Ratio)}
+                              fillerCuts={fillerCuts}
+                              onExported={setExportedSize}
+                              loudnessTarget={loudness}
+                              denoiseAudio={denoiseAudio}
+                            />
+
+                            {exportedSize > 0 && (
+                              <>
+                                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                                <div>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Export Summary</p>
+                                  <PostExportReport originalSize={file?.size || 0} exportedSize={exportedSize} />
+                                </div>
+                              </>
+                            )}
+
+                            <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                            <div>
+                              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Batch Export</p>
+                              <BatchExportPanel
+                                running={batchRunning}
+                                progress={batchProgress}
+                                disabled={!file || !videoRef.current}
+                                onClick={async () => {
+                                  if (!videoRef.current || !file) return
+                                  setBatchRunning(true)
+                                  setBatchProgress([])
+                                  try {
+                                    await batchExport(
+                                      videoRef.current,
+                                      captionGroups,
+                                      captionStyle,
+                                      trimStart,
+                                      trimEnd,
+                                      cropMode,
+                                      blurRegions,
+                                      watermark,
+                                      [...manualCuts, ...fillerCuts],
+                                      silenceSegs,
+                                      removeSilence,
+                                      file.name.replace(/\.[^.]+$/, ''),
+                                      p => setBatchProgress(p),
+                                    )
+                                  } finally {
+                                    setBatchRunning(false)
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+                            <div>
+                              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Export Presets</p>
+                              <ExportPresets
+                                ratio={ratio as '16:9' | '9:16' | '1:1' | '4:5' | 'Original'}
+                                cropMode={cropMode}
+                                stripMeta={stripMeta}
+                                watermark={watermark}
+                                onApply={(preset: ExportPreset) => {
+                                  setRatio(preset.ratio as Ratio)
+                                  setCropMode(preset.cropMode)
+                                  setStripMeta(preset.stripMeta)
+                                }}
+                              />
+                            </div>
+                          </div>
                         </Section>
                       )}
 
@@ -1233,14 +1397,12 @@ export default function App() {
 
                       {openSection === 'region-blur' && (
                         <Section icon={<EyeOff size={13} />} label="Region blur" tooltip="Draw a blur box over faces or sensitive areas" badge={blurRegions.length > 0 ? `${blurRegions.length} region${blurRegions.length !== 1 ? 's' : ''}` : undefined}>
-                          <ProGate label="Blur faces and sensitive areas" onUpgrade={openProModal} isPro={proActive}>
-                            <FaceBlurPanel
-                              regions={blurRegions}
-                              onChange={setBlurRegions}
-                              isDrawing={isDrawingBlur}
-                              onStartDrawing={() => setIsDrawingBlur(true)}
-                            />
-                          </ProGate>
+                          <FaceBlurPanel
+                            regions={blurRegions}
+                            onChange={setBlurRegions}
+                            isDrawing={isDrawingBlur}
+                            onStartDrawing={() => setIsDrawingBlur(true)}
+                          />
                         </Section>
                       )}
 
@@ -1257,9 +1419,7 @@ export default function App() {
 
                       {openSection === 'watermark' && (
                         <Section icon={<Sparkles size={13} />} label="Watermark" tooltip="Overlay a logo or image on the exported video">
-                          <ProGate label="Brand your exports with a logo watermark" onUpgrade={openProModal} isPro={proActive}>
-                            <WatermarkPanel config={watermark} onChange={setWatermark} />
-                          </ProGate>
+                          <WatermarkPanel config={watermark} onChange={setWatermark} />
                         </Section>
                       )}
 
@@ -1278,10 +1438,15 @@ export default function App() {
 
                   {/* Footer */}
                   <div
-                    className="px-5 py-3 text-center"
+                    className="px-5 py-3"
                     style={{ borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}
                   >
-                    <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                    {file && (
+                      <div className="flex justify-center mb-2">
+                        <FileSizeReadout size={file.size} />
+                      </div>
+                    )}
+                    <p className="text-xs text-center" style={{ color: 'var(--text-dim)' }}>
                       All processing runs locally. No file ever leaves your device.
                     </p>
                   </div>

@@ -4,6 +4,7 @@ import { Loader2, AlertCircle, CheckCircle2, Wand2 } from 'lucide-react'
 import { extractAudioFromVideo } from '@/lib/audioExtractor'
 import { transcribeToTimedWords } from '@/lib/whisperTranscribe'
 import type { Word } from '@/lib/captionEngine'
+import type { TranscriptResult } from '@/lib/whisper'
 
 const PHASES = {
   idle:        'idle',
@@ -17,19 +18,13 @@ const PHASES = {
 
 type Phase = typeof PHASES[keyof typeof PHASES]
 
-
 interface Props {
   videoFile: File | null
   videoDuration: number
   onTranscribed: (words: Word[]) => void
+  onResult?: (result: TranscriptResult) => void
 }
 
-// Map each status message to an overall 0-100 percentage across all phases:
-//   extracting  0-12%
-//   downloading 12-72%  (scaled from model download %)
-//   loading     72-82%
-//   transcribing 82-99% (scaled from inference %)
-//   done        100%
 function computeOverallPct(msg: string): number | null {
   if (msg === 'Done') return 100
   if (msg.startsWith('Decoding audio')) return 8
@@ -54,7 +49,7 @@ function computeOverallPct(msg: string): number | null {
   return null
 }
 
-export default function TranscribeButton({ videoFile, videoDuration, onTranscribed }: Props) {
+export default function TranscribeButton({ videoFile, videoDuration, onTranscribed, onResult }: Props) {
   const [phase, setPhase] = useState<Phase>(PHASES.idle)
   const [, setStatus] = useState('')
   const [overallPct, setOverallPct] = useState(0)
@@ -104,6 +99,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
     setOverallPct(12)
 
     let words: Word[]
+    let transcript: string
     try {
       const result = await transcribeToTimedWords(
         audioBlob,
@@ -126,6 +122,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
         },
       )
       words = result.words
+      transcript = result.transcript
     } catch (e) {
       clearFallback()
       setPhase(PHASES.error)
@@ -137,6 +134,17 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
     setOverallPct(100)
     setPhase(PHASES.done)
     onTranscribed(words)
+
+    if (onResult) {
+      const transcriptResult: TranscriptResult = {
+        text: transcript,
+        chunks: words.map(w => ({
+          text: ' ' + w.text,
+          timestamp: [w.startTime, w.endTime] as [number, number | null],
+        })),
+      }
+      onResult(transcriptResult)
+    }
   }
 
   const handleManualTranscript = () => {

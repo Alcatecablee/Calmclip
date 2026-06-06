@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface SegmentMark {
   start: number
@@ -23,36 +23,22 @@ function fmt(s: number): string {
   return `${m}:${ss}.${ms}`
 }
 
-function markStyle(
-  seg:      SegmentMark,
-  trimStart: number,
-  duration:  number,
-  color:     string,
-): React.CSSProperties {
-  const leftPct  = Math.max(0, ((trimStart + seg.start) / duration) * 100)
-  const rightPct = Math.min(100, ((trimStart + seg.end)   / duration) * 100)
-  const widthPct = Math.max(0.3, rightPct - leftPct)
-  return {
-    position:    'absolute',
-    left:        `${leftPct}%`,
-    width:       `${widthPct}%`,
-    height:      '8px',
-    top:         '50%',
-    transform:   'translateY(-50%)',
-    background:  color,
-    borderRadius: 2,
-    opacity:     0.55,
-    pointerEvents: 'none',
-  }
-}
-
 const THUMB_COUNT = 8
+const WAVEFORM_BUCKETS = 400
+const MAX_AUDIO_BYTES  = 200 * 1024 * 1024
+const DECODE_TIMEOUT   = 8000
 
-export default function TrimSlider({ duration, start, end, onChange, silenceMarks = [], manualMarks = [], file }: Props) {
-  const [thumbUrls,  setThumbUrls]  = useState<string[]>([])
-  const [thumbError, setThumbError] = useState(false)
-  const thumbFile = useRef<File | null>(null)
+export default function TrimSlider({
+  duration, start, end, onChange,
+  silenceMarks = [], manualMarks = [], file,
+}: Props) {
+  const [thumbUrls,     setThumbUrls]     = useState<string[]>([])
+  const [thumbError,    setThumbError]    = useState(false)
+  const [waveformPeaks, setWaveformPeaks] = useState<Float32Array | null>(null)
+  const thumbFile    = useRef<File | null>(null)
+  const waveformRef  = useRef<HTMLCanvasElement>(null)
 
+  // ── Thumbnail extraction ────────────────────────────────────────────────
   useEffect(() => {
     if (!file || duration <= 0) {
       setThumbUrls([])
@@ -99,9 +85,7 @@ export default function TrimSlider({ duration, start, end, onChange, silenceMark
       if (!cancelled) setThumbUrls(thumbs)
     }
 
-    extract().catch(() => {
-      if (!cancelled) setThumbError(true)
-    })
+    extract().catch(() => { if (!cancelled) setThumbError(true) })
 
     return () => {
       cancelled = true
@@ -110,11 +94,136 @@ export default function TrimSlider({ duration, start, end, onChange, silenceMark
     }
   }, [file, duration])
 
+  // ── Waveform peak extraction ────────────────────────────────────────────
+  useEffect(() => {
+    setWaveformPeaks(null)
+    if (!file) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const url = URL.createObjectURL(file)
+        let buf: ArrayBuffer
+        try {
+          const res  = await fetch(url)
+          const size = parseInt(res.headers.get('content-length') ?? '0', 10)
+          if (size > MAX_AUDIO_BYTES) return
+          buf = await Promise.race([
+            res.arrayBuffer(),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), DECODE_TIMEOUT)),
+          ])
+        } finally {
+          URL.revokeObjectURL(url)
+        }
+        if (cancelled) return
+        let actx: AudioContext | null = null
+        try {
+          actx = new AudioContext()
+          const audio = await Promise.race([
+            actx.decodeAudioData(buf),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), DECODE_TIMEOUT)),
+          ])
+          if (cancelled) return
+          const data  = audio.getChannelData(0)
+          const step  = Math.max(1, Math.floor(data.length / WAVEFORM_BUCKETS))
+          const peaks = new Float32Array(WAVEFORM_BUCKETS)
+          for (let i = 0; i < WAVEFORM_BUCKETS; i++) {
+            const base = i * step
+            let max = 0
+            for (let j = 0; j < step; j++) {
+              const v = Math.abs(data[base + j] ?? 0)
+              if (v > max) max = v
+            }
+            peaks[i] = max
+          }
+          if (!cancelled) setWaveformPeaks(peaks)
+        } finally {
+          actx?.close()
+        }
+      } catch {
+        // Waveform is cosmetic — silently skip
+      }
+    })()
+    return () => { cancelled = true }
+  }, [file])
+
+  // ── Waveform canvas draw ────────────────────────────────────────────────
+  const drawWaveform = useCallback(() => {
+    const canvas = waveformRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const W = canvas.width
+    const H = canvas.height
+    ctx.clearRect(0, 0, W, H)
+
+    if (!waveformPeaks) {
+      // No peaks yet — draw a thin placeholder line
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'
+      ctx.fillRect(0, H / 2 - 1, W, 2)
+      return
+    }
+
+    const N      = waveformPeaks.length
+    const trimS  = duration > 0 ? start / duration : 0
+    const trimE  = duration > 0 ? end   / duration : 1
+    const barW   = Math.max(1, (W / N) - 0.3)
+    const midY   = H / 2
+
+    // Draw waveform bars
+    for (let i = 0; i < N; i++) {
+      const pos  = i / N
+      const barH = Math.max(2, waveformPeaks[i] * H * 0.9)
+      if (pos < trimS || pos > trimE) {
+        ctx.fillStyle = 'rgba(255,255,255,0.06)'
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.28)'
+      }
+      ctx.fillRect((i / N) * W, midY - barH / 2, barW, barH)
+    }
+
+    // Trim region tint
+    const tintL = trimS * W
+    const tintW = (trimE - trimS) * W
+    ctx.fillStyle = 'rgba(211,65,105,0.12)'
+    ctx.fillRect(tintL, 0, tintW, H)
+
+    // Silence segments (amber) — coords are relative to start (trimStart)
+    for (const seg of silenceMarks) {
+      const segAbsStart = start + seg.start
+      const segAbsEnd   = start + seg.end
+      const l = (segAbsStart / duration) * W
+      const w = Math.max(2, ((segAbsEnd - segAbsStart) / duration) * W)
+      ctx.fillStyle = 'rgba(245,158,11,0.45)'
+      ctx.fillRect(l, 0, w, H)
+    }
+
+    // Manual cuts (red)
+    for (const seg of manualMarks) {
+      const segAbsStart = start + seg.start
+      const segAbsEnd   = start + seg.end
+      const l = (segAbsStart / duration) * W
+      const w = Math.max(2, ((segAbsEnd - segAbsStart) / duration) * W)
+      ctx.fillStyle = 'rgba(239,68,68,0.60)'
+      ctx.fillRect(l, 0, w, H)
+    }
+
+    // Left / right trim shade
+    ctx.fillStyle = 'rgba(0,0,0,0.40)'
+    if (trimS > 0)     ctx.fillRect(0,         0, tintL,            H)
+    if (trimE < 1)     ctx.fillRect(tintL + tintW, 0, W - (tintL + tintW), H)
+
+    // Trim edge markers
+    ctx.fillStyle = 'rgba(211,65,105,0.90)'
+    ctx.fillRect(tintL,             0, 2, H)
+    ctx.fillRect(tintL + tintW - 2, 0, 2, H)
+  }, [waveformPeaks, start, end, duration, silenceMarks, manualMarks])
+
+  useEffect(() => { drawWaveform() }, [drawWaveform])
+
   if (duration <= 0) return null
 
   const startPct = (start / duration) * 100
   const endPct   = (end   / duration) * 100
-
   const hasMarks = silenceMarks.length > 0 || manualMarks.length > 0
 
   return (
@@ -148,30 +257,48 @@ export default function TrimSlider({ duration, start, end, onChange, silenceMark
         </div>
       )}
 
-      <div className="dual-range-container">
-        <div className="track-bg" />
-
-        {silenceMarks.map((seg, i) => (
-          <div key={`sil-${i}`} style={markStyle(seg, start, duration, '#f59e0b')} />
-        ))}
-        {manualMarks.map((seg, i) => (
-          <div key={`man-${i}`} style={markStyle(seg, start, duration, '#ef4444')} />
-        ))}
-
-        <div
-          className="track-fill"
+      {/* Waveform + dual-range overlay */}
+      <div style={{ position: 'relative', height: 36, display: 'flex', alignItems: 'center' }}>
+        {/* Waveform canvas — full width, sits behind everything */}
+        <canvas
+          ref={waveformRef}
+          width={WAVEFORM_BUCKETS}
+          height={36}
           style={{
-            left:  `${startPct}%`,
-            width: `${endPct - startPct}%`,
+            position:     'absolute',
+            inset:        0,
+            width:        '100%',
+            height:       '100%',
+            borderRadius: 4,
+            display:      'block',
+            pointerEvents: 'none',
           }}
         />
+
+        {/* Track fill bar (kept for visual clarity of selected range) */}
+        <div
+          style={{
+            position:      'absolute',
+            left:          `${startPct}%`,
+            width:         `${endPct - startPct}%`,
+            height:        2,
+            top:           '50%',
+            transform:     'translateY(-50%)',
+            background:    'var(--primary)',
+            borderRadius:  1,
+            opacity:       0.7,
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Range inputs */}
         <input
           type="range"
           min={0}
           max={duration}
           step={0.1}
           value={start}
-          style={{ background: 'transparent' }}
+          style={{ position: 'absolute', width: '100%', background: 'transparent', pointerEvents: 'none' }}
           onChange={e => {
             const v = parseFloat(e.target.value)
             if (v < end - 0.5) onChange(v, end)
@@ -183,7 +310,7 @@ export default function TrimSlider({ duration, start, end, onChange, silenceMark
           max={duration}
           step={0.1}
           value={end}
-          style={{ background: 'transparent' }}
+          style={{ position: 'absolute', width: '100%', background: 'transparent', pointerEvents: 'none' }}
           onChange={e => {
             const v = parseFloat(e.target.value)
             if (v > start + 0.5) onChange(start, v)

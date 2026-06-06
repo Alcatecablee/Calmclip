@@ -18,22 +18,25 @@ import type { BlurRegion }      from '../components/FaceBlurPanel'
 import type { WatermarkConfig } from '../components/WatermarkPanel'
 import type { SilenceSegment }  from './silenceCutter'
 import type { CropMode }        from './ffmpeg'
+import { LOUDNESS_PRESETS, type LoudnessTarget } from './loudness'
 
 interface ExportOptions {
-  videoElement:   HTMLVideoElement
-  captionGroups:  CaptionGroup[]
-  captionStyle:   CaptionStyle
-  onProgress?:    (progress: number) => void
-  targetWidth?:   number | null
-  targetHeight?:  number | null
-  trimStart?:     number
-  trimEnd?:       number | null
-  cropMode?:      CropMode
-  blurRegions?:   BlurRegion[]
-  watermark?:     WatermarkConfig | null
-  manualCuts?:    SilenceSegment[]
-  silenceSegs?:   SilenceSegment[]
-  removeSilence?: boolean
+  videoElement:    HTMLVideoElement
+  captionGroups:   CaptionGroup[]
+  captionStyle:    CaptionStyle
+  onProgress?:     (progress: number) => void
+  targetWidth?:    number | null
+  targetHeight?:   number | null
+  trimStart?:      number
+  trimEnd?:        number | null
+  cropMode?:       CropMode
+  blurRegions?:    BlurRegion[]
+  watermark?:      WatermarkConfig | null
+  manualCuts?:     SilenceSegment[]
+  silenceSegs?:    SilenceSegment[]
+  removeSilence?:  boolean
+  loudnessTarget?: LoudnessTarget
+  denoiseAudio?:   boolean
 }
 
 type AudioVideoEl = HTMLVideoElement & { _audioEl?: HTMLAudioElement }
@@ -43,16 +46,18 @@ export async function exportVideoWithCaptions({
   captionGroups,
   captionStyle,
   onProgress,
-  targetWidth   = null,
-  targetHeight  = null,
-  trimStart     = 0,
-  trimEnd       = null,
-  cropMode      = 'fit',
-  blurRegions   = [],
-  watermark     = null,
-  manualCuts    = [],
-  silenceSegs   = [],
-  removeSilence = false,
+  targetWidth    = null,
+  targetHeight   = null,
+  trimStart      = 0,
+  trimEnd        = null,
+  cropMode       = 'fit',
+  blurRegions    = [],
+  watermark      = null,
+  manualCuts     = [],
+  silenceSegs    = [],
+  removeSilence  = false,
+  loudnessTarget = 'off',
+  denoiseAudio   = false,
 }: ExportOptions): Promise<Blob> {
 
   // ── Pre-load watermark image (async, before Promise) ──────────────────
@@ -122,7 +127,46 @@ export async function exportVideoWithCaptions({
       audioCtx    = new AudioContext()
       audioSource = audioCtx.createMediaElementSource(audioEl)
       const audioDest = audioCtx.createMediaStreamDestination()
-      audioSource.connect(audioDest)
+
+      // Build processing chain: source → [denoise] → [compressor + gain] → dest
+      let lastNode: AudioNode = audioSource
+
+      if (denoiseAudio) {
+        const hp = audioCtx.createBiquadFilter()
+        hp.type = 'highpass'
+        hp.frequency.value = 100
+        lastNode.connect(hp)
+        lastNode = hp
+
+        const lp = audioCtx.createBiquadFilter()
+        lp.type = 'lowpass'
+        lp.frequency.value = 7500
+        lastNode.connect(lp)
+        lastNode = lp
+      }
+
+      if (loudnessTarget !== 'off') {
+        const compressor = audioCtx.createDynamicsCompressor()
+        compressor.threshold.value = -24
+        compressor.knee.value      = 10
+        compressor.ratio.value     = 8
+        compressor.attack.value    = 0.003
+        compressor.release.value   = 0.25
+        lastNode.connect(compressor)
+        lastNode = compressor
+
+        const gainNode = audioCtx.createGain()
+        // Approximate: assume source content is ~-18 LUFS (typical speech);
+        // apply gain delta to reach the preset target.
+        const sourceLufs = -18
+        const preset = LOUDNESS_PRESETS.find(p => p.key === loudnessTarget)
+        const gainDb = preset ? (preset.lufs - sourceLufs) : 0
+        gainNode.gain.value = Math.pow(10, gainDb / 20)
+        lastNode.connect(gainNode)
+        lastNode = gainNode
+      }
+
+      lastNode.connect(audioDest)
       audioDest.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t))
 
       ;(video as AudioVideoEl)._audioEl = audioEl

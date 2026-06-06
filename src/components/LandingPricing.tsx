@@ -18,6 +18,9 @@ const PRO_FEATURES = [
   'Face blur (on-device, no upload)',
   'Watermark overlay',
   'Export presets',
+  'AI speech transcription (Whisper, on-device)',
+  'Hook scorer, pace analyzer, filler word removal',
+  'B-roll gap detector and chapter generator',
 ]
 
 const MODAL_SHADOW = '0 24px 48px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.10)'

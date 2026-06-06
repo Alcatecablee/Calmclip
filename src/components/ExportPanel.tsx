@@ -9,6 +9,7 @@ import type { BlurRegion }      from '@/components/FaceBlurPanel'
 import type { WatermarkConfig } from '@/components/WatermarkPanel'
 import type { SilenceSegment }  from '@/lib/silenceCutter'
 import type { CropMode }        from '@/lib/ffmpeg'
+import type { LoudnessTarget }  from '@/lib/loudness'
 
 const RATIO_PRESETS = [
   { label: '16:9',      desc: 'Landscape',           w: 1920, h: 1080 },
@@ -30,6 +31,12 @@ interface Props {
   manualCuts:     SilenceSegment[]
   silenceSegs:    SilenceSegment[]
   removeSilence:  boolean
+  ratio:           string
+  onRatioChange:   (r: string) => void
+  fillerCuts?:     SilenceSegment[]
+  onExported?:     (size: number) => void
+  loudnessTarget?: LoudnessTarget
+  denoiseAudio?:   boolean
 }
 
 export default function ExportPanel({
@@ -44,14 +51,18 @@ export default function ExportPanel({
   manualCuts,
   silenceSegs,
   removeSilence,
+  ratio,
+  onRatioChange,
+  fillerCuts = [],
+  onExported,
+  loudnessTarget = 'off',
+  denoiseAudio   = false,
 }: Props) {
-  const [phase, setPhase]               = useState<'idle' | 'processing' | 'done'>('idle')
-  const [progress, setProgress]         = useState(0)
-  const [downloadUrl, setDownloadUrl]   = useState<string | null>(null)
-  const [error, setError]               = useState<string | null>(null)
-  const [selectedRatio, setSelectedRatio] = useState<string>('Original')
+  const [phase, setPhase]             = useState<'idle' | 'processing' | 'done'>('idle')
+  const [progress, setProgress]       = useState(0)
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [error, setError]             = useState<string | null>(null)
 
-  // Cleanup blob URL on unmount
   useEffect(() => {
     return () => { if (downloadUrl) URL.revokeObjectURL(downloadUrl) }
   }, [downloadUrl])
@@ -66,28 +77,33 @@ export default function ExportPanel({
     setError(null)
     if (downloadUrl) { URL.revokeObjectURL(downloadUrl); setDownloadUrl(null) }
 
-    const preset = RATIO_PRESETS.find(p => p.label === selectedRatio) || RATIO_PRESETS[4]
+    const preset = RATIO_PRESETS.find(p => p.label === ratio) || RATIO_PRESETS[4]
+
+    const allManualCuts = [...manualCuts, ...fillerCuts]
 
     try {
       const blob = await exportVideoWithCaptions({
-        videoElement:  videoRef.current,
-        captionGroups: captionGroups || [],
+        videoElement:   videoRef.current,
+        captionGroups:  captionGroups || [],
         captionStyle,
-        targetWidth:   preset.w,
-        targetHeight:  preset.h,
-        trimStart:     trimStart ?? 0,
-        trimEnd:       trimEnd   ?? null,
+        targetWidth:    preset.w,
+        targetHeight:   preset.h,
+        trimStart:      trimStart ?? 0,
+        trimEnd:        trimEnd   ?? null,
         cropMode,
-        blurRegions:   blurRegions   || [],
-        watermark:     watermark     ?? null,
-        manualCuts:    manualCuts    || [],
-        silenceSegs:   silenceSegs   || [],
-        removeSilence: removeSilence ?? false,
-        onProgress:    (p) => setProgress(Math.round(p * 100)),
+        blurRegions:    blurRegions   || [],
+        watermark:      watermark     ?? null,
+        manualCuts:     allManualCuts,
+        silenceSegs:    silenceSegs   || [],
+        removeSilence:  removeSilence ?? false,
+        loudnessTarget,
+        denoiseAudio,
+        onProgress:     (p) => setProgress(Math.round(p * 100)),
       })
       const url = URL.createObjectURL(blob)
       setDownloadUrl(url)
       setPhase('done')
+      onExported?.(blob.size)
     } catch (e) {
       setError((e as Error).message || 'Export failed. Please try again.')
       setPhase('idle')
@@ -106,19 +122,18 @@ export default function ExportPanel({
     <div className="space-y-3">
       {phase === 'idle' && (
         <>
-          {/* Output Ratio */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>Output Ratio</p>
             <div className="grid grid-cols-3 gap-1">
               {RATIO_PRESETS.map((preset) => (
                 <button
                   key={preset.label}
-                  onClick={() => setSelectedRatio(preset.label)}
+                  onClick={() => onRatioChange(preset.label)}
                   className="rounded-md px-2 py-1.5 text-center transition-colors"
                   style={{
-                    border:     `1px solid ${selectedRatio === preset.label ? 'var(--primary)' : 'var(--border)'}`,
-                    background:  selectedRatio === preset.label ? 'var(--primary-a8)' : 'var(--bg-surface)',
-                    color:       selectedRatio === preset.label ? 'var(--primary)' : 'var(--text-muted)',
+                    border:     `1px solid ${ratio === preset.label ? 'var(--primary)' : 'var(--border)'}`,
+                    background:  ratio === preset.label ? 'var(--primary-a8)' : 'var(--bg-surface)',
+                    color:       ratio === preset.label ? 'var(--primary)' : 'var(--text-muted)',
                   }}
                 >
                   <div className="text-[11px] font-semibold leading-tight">{preset.label}</div>
@@ -127,6 +142,12 @@ export default function ExportPanel({
               ))}
             </div>
           </div>
+
+          {fillerCuts.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+              <span>{fillerCuts.length} filler word cut{fillerCuts.length !== 1 ? 's' : ''} will be applied</span>
+            </div>
+          )}
 
           <Button
             onClick={handleExport}
@@ -148,7 +169,7 @@ export default function ExportPanel({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--primary)' }} />
-            <span style={{ color: 'var(--text-muted)' }}>Rendering video with captions...</span>
+            <span style={{ color: 'var(--text-muted)' }}>Rendering video...</span>
           </div>
           <Progress value={progress} className="h-2" />
           <p className="text-[10px] text-center" style={{ color: 'var(--text-faint)' }}>{progress}%</p>
@@ -183,7 +204,6 @@ export default function ExportPanel({
         </div>
       )}
 
-      {/* Subtitle export */}
       {captionGroups && captionGroups.length > 0 && phase !== 'processing' && (
         <div className="pt-3 space-y-1.5" style={{ borderTop: '1px solid var(--border)' }}>
           <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>Subtitle Files</p>
