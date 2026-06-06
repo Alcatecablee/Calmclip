@@ -33,7 +33,7 @@ import { loadFfmpeg, isFFLoaded, type Ratio, type CropMode } from './lib/ffmpeg'
 import { parseVideoMeta, type VideoMeta } from './lib/metadata'
 import type { LoudnessTarget } from './lib/loudness'
 import type { SilenceSegment } from './lib/silenceCutter'
-import { loadSession, type SessionData } from './lib/projectSession'
+import { loadSession, recordToolUsage, type SessionData } from './lib/projectSession'
 import { formatBytes } from './lib/exportHandlers'
 import { togglePip, copyFrameToClipboard } from './lib/videoTools'
 import SessionsModal from './components/SessionsModal'
@@ -820,7 +820,10 @@ export default function App() {
                   manualCuts={manualCuts}
                   watermark={watermark}
                   isDrawingBlur={isDrawingBlur}
-                  onAddBlurRegion={(r) => setBlurRegions([...blurRegions, { ...r, id: Date.now() }])}
+                  onAddBlurRegion={(r) => {
+                    setBlurRegions([...blurRegions, { ...r, id: Date.now() }])
+                    recordToolUsage('faceBlur').catch(() => {})
+                  }}
                   onStopDrawingBlur={() => setIsDrawingBlur(false)}
                   captionGroups={captionGroups}
                   captionStyle={captionStyle}
@@ -1203,7 +1206,7 @@ export default function App() {
                             <TranscribeButton
                               videoFile={file}
                               videoDuration={duration}
-                              onTranscribed={setWords}
+                              onTranscribed={ws => { setWords(ws); if (ws.length > 0) recordToolUsage('captions').catch(() => {}) }}
                               onResult={r => setTranscriptResult(r)}
                             />
 
@@ -1325,6 +1328,7 @@ export default function App() {
                                 disabled={!file || !videoRef.current}
                                 onClick={async () => {
                                   if (!videoRef.current || !file) return
+                                  recordToolUsage('batchExport').catch(() => {})
                                   setBatchRunning(true)
                                   setBatchProgress([])
                                   try {

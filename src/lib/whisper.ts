@@ -157,7 +157,7 @@ export const WHISPER_MODELS: WhisperModel[] = [
 
 export function createWhisperWorker(
   onStatus: (s: WhisperStatus) => void,
-): { run: (audio: Float32Array, model: WhisperModelId) => void; terminate: () => void } {
+): { run: (audio: Float32Array, model: WhisperModelId, language?: string) => void; terminate: () => void } {
   const worker = new Worker(
     new URL('../workers/whisper.worker.ts', import.meta.url),
     { type: 'module' },

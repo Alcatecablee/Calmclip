@@ -1,5 +1,6 @@
 import { Volume2, VolumeX } from 'lucide-react'
 import { LOUDNESS_PRESETS, type LoudnessTarget } from '../lib/loudness'
+import { recordToolUsage } from '../lib/projectSession'
 
 interface Props {
   target:   LoudnessTarget
@@ -13,7 +14,7 @@ export default function LoudnessPanel({ target, onChange, denoise }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <button
-        onClick={() => onChange(enabled ? 'off' : 'youtube')}
+        onClick={() => { if (!enabled) recordToolUsage('loudness').catch(() => {}); onChange(enabled ? 'off' : 'youtube') }}
         className="flex items-center gap-2 text-sm w-full transition-colors"
         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: enabled ? 'var(--primary)' : 'var(--text-muted)' }}
         title="Apply a loudnorm filter at export to reach a target loudness level"

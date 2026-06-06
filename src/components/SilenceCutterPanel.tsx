@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AudioLines, Loader2, CheckCircle2, AlertCircle, Scissors } from 'lucide-react'
 import { detectSilence, type SilenceSegment } from '../lib/silenceCutter'
+import { recordToolUsage } from '../lib/projectSession'
 
 interface Props {
   file:           File | null
@@ -33,6 +34,7 @@ export default function SilenceCutterPanel({ file, trimStart, trimEnd, hasAudio,
     if (!file) return
     setPhase('detecting')
     setError(null)
+    recordToolUsage('silenceCut').catch(() => {})
     try {
       const segs = await detectSilence(file, trimStart, trimEnd, noiseDb, minDur)
       setSegments(segs)

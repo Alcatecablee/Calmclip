@@ -31,7 +31,9 @@ export async function transcribeToTimedWords(
   audioBlob: Blob,
   videoDurationSeconds: number,
   onStatusUpdate?: (msg: string) => void,
-): Promise<{ transcript: string; words: Word[] }> {
+  model?: string,
+  language?: string,
+): Promise<{ transcript: string; words: Word[]; detectedLanguage?: string }> {
   console.log(TAG, 'transcribeToTimedWords: audioBlob size:', audioBlob.size, 'duration:', videoDurationSeconds)
 
   onStatusUpdate?.('Decoding audio...')
@@ -53,6 +55,7 @@ export async function transcribeToTimedWords(
         progress?: number
         result?: { text: string; chunks?: Array<{ text: string; timestamp: [number, number | null] }> }
         message?: string
+        detectedLanguage?: string
       }
 
       if (msg.type === 'model-progress') {
@@ -112,7 +115,7 @@ export async function transcribeToTimedWords(
 
         console.log(TAG, 'done:', words.length, 'words')
         onStatusUpdate?.('Done')
-        resolve({ transcript, words })
+        resolve({ transcript, words, detectedLanguage: msg.detectedLanguage })
       } else if (msg.type === 'error') {
         worker.terminate()
         reject(new Error(msg.message ?? 'Transcription failed.'))
@@ -133,7 +136,8 @@ export async function transcribeToTimedWords(
       type: 'transcribe',
       audio,
       durationSec: videoDurationSeconds,
-      model: 'Xenova/whisper-tiny',
+      model: model ?? 'Xenova/whisper-base',
+      ...(language ? { language } : {}),
     }, [audio.buffer])
   })
 }

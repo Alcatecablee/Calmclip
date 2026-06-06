@@ -1,1 +1,1 @@
-- [WebCodecs rotation fix](webcodecs-rotation.md) — phone videos stored landscape with rotate=90 need coded-vs-display dim detection and canvas affine transform when drawing frames
+- [TranscribeButton is the production transcription path](transcribe-path.md) — WhisperPanel.tsx is dead code; all progressive capability must be wired through TranscribeButton.tsx + whisperTranscribe.ts.

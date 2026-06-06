@@ -1,28 +1,66 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, AlertCircle, CheckCircle2, Wand2 } from 'lucide-react'
 import { extractAudioFromVideo } from '@/lib/audioExtractor'
 import { transcribeToTimedWords } from '@/lib/whisperTranscribe'
 import type { Word } from '@/lib/captionEngine'
 import type { TranscriptResult } from '@/lib/whisper'
+import {
+  WHISPER_MODELS, WHISPER_LANGUAGES, type WhisperModelId, getBestCachedModel,
+} from '@/lib/whisper'
+import { writeCapabilityHint, recordToolUsage } from '@/lib/projectSession'
+import {
+  startWarmingQueue,
+  getWarmingStatus,
+  subscribeWarmingStatus,
+  unsubscribeWarmingStatus,
+  type WarmingStatus,
+} from '@/lib/modelWarmer'
+
+const MODEL_PREF_KEY = 'calmclip_model_pref'
+const LANG_PREF_KEY  = 'calmclip_lang_pref'
+
+function loadModelPref(): WhisperModelId {
+  try {
+    const stored = localStorage.getItem(MODEL_PREF_KEY)
+    const valid: WhisperModelId[] = [
+      'Xenova/whisper-tiny', 'Xenova/whisper-base',
+      'Xenova/whisper-small', 'Xenova/whisper-medium',
+    ]
+    if (stored && (valid as string[]).includes(stored)) return stored as WhisperModelId
+  } catch { /* ignore */ }
+  return 'Xenova/whisper-base'
+}
+
+function saveModelPref(id: WhisperModelId): void {
+  try { localStorage.setItem(MODEL_PREF_KEY, id) } catch { /* ignore */ }
+}
+
+function loadLangPref(): string {
+  try { return localStorage.getItem(LANG_PREF_KEY) ?? 'auto' } catch { return 'auto' }
+}
+
+function saveLangPref(code: string): void {
+  try { localStorage.setItem(LANG_PREF_KEY, code) } catch { /* ignore */ }
+}
 
 const PHASES = {
-  idle:        'idle',
-  extracting:  'extracting',
-  downloading: 'downloading',
-  loading:     'loading',
-  transcribing:'transcribing',
-  done:        'done',
-  error:       'error',
+  idle:         'idle',
+  extracting:   'extracting',
+  downloading:  'downloading',
+  loading:      'loading',
+  transcribing: 'transcribing',
+  done:         'done',
+  error:        'error',
 } as const
 
 type Phase = typeof PHASES[keyof typeof PHASES]
 
 interface Props {
-  videoFile: File | null
-  videoDuration: number
-  onTranscribed: (words: Word[]) => void
-  onResult?: (result: TranscriptResult) => void
+  videoFile:      File | null
+  videoDuration:  number
+  onTranscribed:  (words: Word[]) => void
+  onResult?:      (result: TranscriptResult) => void
 }
 
 function computeOverallPct(msg: string): number | null {
@@ -50,11 +88,43 @@ function computeOverallPct(msg: string): number | null {
 }
 
 export default function TranscribeButton({ videoFile, videoDuration, onTranscribed, onResult }: Props) {
-  const [phase, setPhase] = useState<Phase>(PHASES.idle)
-  const [, setStatus] = useState('')
+  const [phase, setPhase]           = useState<Phase>(PHASES.idle)
+  const [, setStatus]               = useState('')
   const [overallPct, setOverallPct] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [error, setError]           = useState<string | null>(null)
+  const [modelId, setModelId]       = useState<WhisperModelId>(loadModelPref)
+  const [language, setLanguage]     = useState<string>(loadLangPref)
+  const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
+  const [pillDismissed, setPillDismissed] = useState(false)
+  const fallbackIntervalRef         = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Auto-upgrade to the best already-cached model on mount.
+  // Only promotes from the default (base). A user who explicitly chose tiny
+  // for speed keeps their preference; we do not override a deliberate choice.
+  useEffect(() => {
+    getBestCachedModel().then(best => {
+      if (best !== 'Xenova/whisper-base') {
+        setModelId(prev => {
+          if (prev === 'Xenova/whisper-base') {
+            saveModelPref(best)
+            return best
+          }
+          return prev
+        })
+      }
+    }).catch(() => {})
+  }, [])
+
+  // Subscribe to background warming status for the pill indicator.
+  useEffect(() => {
+    subscribeWarmingStatus(setWarmingStatus)
+    return () => unsubscribeWarmingStatus(setWarmingStatus)
+  }, [])
+
+  // Re-show the pill whenever a new model starts warming.
+  useEffect(() => {
+    if (warmingStatus !== null) setPillDismissed(false)
+  }, [warmingStatus?.modelId])
 
   function clearFallback() {
     if (fallbackIntervalRef.current !== null) {
@@ -81,6 +151,9 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
       return
     }
 
+    // Phase 6: track tool usage before starting so even failed attempts count.
+    recordToolUsage('transcribe').catch(() => {})
+
     setPhase(PHASES.extracting)
     setOverallPct(4)
     setError(null)
@@ -100,6 +173,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
 
     let words: Word[]
     let transcript: string
+    let detectedLanguage: string | undefined
     try {
       const result = await transcribeToTimedWords(
         audioBlob,
@@ -120,9 +194,12 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
             setPhase(PHASES.done)
           }
         },
+        modelId,
+        language !== 'auto' ? language : undefined,
       )
-      words = result.words
-      transcript = result.transcript
+      words            = result.words
+      transcript       = result.transcript
+      detectedLanguage = result.detectedLanguage
     } catch (e) {
       clearFallback()
       setPhase(PHASES.error)
@@ -139,12 +216,20 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
       const transcriptResult: TranscriptResult = {
         text: transcript,
         chunks: words.map(w => ({
-          text: ' ' + w.text,
+          text:      ' ' + w.text,
           timestamp: [w.startTime, w.endTime] as [number, number | null],
         })),
       }
       onResult(transcriptResult)
     }
+
+    // Phase 2: write capability hint so Phase 3 warming picks the right next model.
+    if (detectedLanguage) {
+      writeCapabilityHint(detectedLanguage, modelId).catch(() => {})
+    }
+
+    // Phase 3: start background model warming while the user edits.
+    startWarmingQueue(modelId).catch(() => {})
   }
 
   const handleManualTranscript = () => {
@@ -168,17 +253,60 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
   const isProcessing = phase !== PHASES.idle && phase !== PHASES.done && phase !== PHASES.error
 
   const stepLabels: Record<Phase, string> = {
-    [PHASES.idle]:        '',
-    [PHASES.extracting]:  'Extracting audio...',
-    [PHASES.downloading]: 'Downloading processing engine',
-    [PHASES.loading]:     'Preparing model...',
-    [PHASES.transcribing]:'Transcribing...',
-    [PHASES.done]:        'Transcription complete',
-    [PHASES.error]:       'Error',
+    [PHASES.idle]:         '',
+    [PHASES.extracting]:   'Extracting audio...',
+    [PHASES.downloading]:  'Downloading processing engine',
+    [PHASES.loading]:      'Preparing model...',
+    [PHASES.transcribing]: 'Transcribing...',
+    [PHASES.done]:         'Transcription complete',
+    [PHASES.error]:        'Error',
   }
 
   return (
     <div className="space-y-2">
+      {/* Model selector: 4 compact buttons, one per Whisper model */}
+      <div className="grid grid-cols-4 gap-1">
+        {WHISPER_MODELS.map(m => (
+          <button
+            key={m.id}
+            disabled={isProcessing}
+            onClick={() => { setModelId(m.id); saveModelPref(m.id) }}
+            title={m.description + (m.warning ? ' ' + m.warning : '')}
+            className="rounded px-1 py-1.5 text-center transition-colors"
+            style={{
+              fontSize:   '10px',
+              background: modelId === m.id ? 'var(--primary)' : 'var(--bg-surface)',
+              color:      modelId === m.id ? 'var(--primary-foreground)' : 'var(--text-muted)',
+              border:     `1px solid ${modelId === m.id ? 'var(--primary)' : 'var(--border)'}`,
+              cursor:     isProcessing ? 'not-allowed' : 'pointer',
+              opacity:    isProcessing ? 0.5 : 1,
+            }}
+          >
+            <div className="font-semibold">{m.label}</div>
+            <div style={{ opacity: 0.75 }}>{m.size}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Language selector */}
+      <select
+        disabled={isProcessing}
+        value={language}
+        onChange={e => { setLanguage(e.target.value); saveLangPref(e.target.value) }}
+        className="w-full rounded px-2 py-1 text-xs"
+        style={{
+          background: 'var(--bg-surface)',
+          color:      'var(--text-muted)',
+          border:     '1px solid var(--border)',
+          cursor:     isProcessing ? 'not-allowed' : 'pointer',
+          opacity:    isProcessing ? 0.5 : 1,
+        }}
+      >
+        {WHISPER_LANGUAGES.map(l => (
+          <option key={l.code} value={l.code}>{l.label}</option>
+        ))}
+      </select>
+
       <Button
         onClick={handleTranscribe}
         className="w-full font-semibold"
@@ -214,7 +342,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
 
           {phase === PHASES.downloading && (
             <p className="mt-1 text-[10px]" style={{ color: 'var(--text-faint)' }}>
-              One-time download (~37 MB). After this, the app works fully offline.
+              One-time download. After this, the app works fully offline.
             </p>
           )}
 
@@ -254,6 +382,41 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
       >
         Or type manually
       </Button>
+
+      {/* Background warming pill: dismiss on click, re-appears for each new model */}
+      {warmingStatus && !pillDismissed && (
+        <button
+          onClick={() => setPillDismissed(true)}
+          className="w-full text-left rounded-lg px-3 py-2"
+          style={{
+            background:   'var(--bg-surface)',
+            border:       '1px solid var(--border)',
+            borderRadius: '8px',
+            cursor:       'pointer',
+          }}
+          title="Click to dismiss"
+        >
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {warmingStatus.done
+                ? `${warmingStatus.modelLabel} model ready`
+                : `Upgrading accuracy (${warmingStatus.modelLabel})...`}
+            </span>
+            <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--primary)' }}>
+              {warmingStatus.done ? 'Done' : `${warmingStatus.progress}%`}
+            </span>
+          </div>
+          <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width:      `${warmingStatus.done ? 100 : warmingStatus.progress}%`,
+                background: 'var(--primary)',
+              }}
+            />
+          </div>
+        </button>
+      )}
     </div>
   )
 }

@@ -19,7 +19,8 @@ import {
   type WarmingStatus,
 } from '../lib/modelWarmer'
 
-const LANG_PREF_KEY = 'calmclip_lang_pref'
+const LANG_PREF_KEY  = 'calmclip_lang_pref'
+const MODEL_PREF_KEY = 'calmclip_model_pref'
 
 function loadLangPref(): string {
   try { return localStorage.getItem(LANG_PREF_KEY) ?? 'auto' } catch { return 'auto' }
@@ -27,6 +28,19 @@ function loadLangPref(): string {
 
 function saveLangPref(code: string): void {
   try { localStorage.setItem(LANG_PREF_KEY, code) } catch { /* ignore */ }
+}
+
+function loadModelPref(): WhisperModelId {
+  try {
+    const stored = localStorage.getItem(MODEL_PREF_KEY)
+    const valid: WhisperModelId[] = ['Xenova/whisper-tiny', 'Xenova/whisper-base', 'Xenova/whisper-small', 'Xenova/whisper-medium']
+    if (stored && (valid as string[]).includes(stored)) return stored as WhisperModelId
+  } catch { /* ignore */ }
+  return 'Xenova/whisper-base'
+}
+
+function saveModelPref(id: WhisperModelId): void {
+  try { localStorage.setItem(MODEL_PREF_KEY, id) } catch { /* ignore */ }
 }
 
 interface Props {
@@ -55,7 +69,7 @@ const TRANSCRIBE_TIPS = [
 export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onResult, onCaption }: Props) {
   const [status, setStatus]       = useState<WhisperStatus>({ phase: 'idle' })
   const [elapsed, setElapsed]     = useState(0)
-  const [modelId, setModelId]     = useState<WhisperModelId>('Xenova/whisper-base')
+  const [modelId, setModelId]     = useState<WhisperModelId>(loadModelPref)
   const [language, setLanguage]       = useState<string>(loadLangPref)
   const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
   const workerRef                     = useRef<ReturnType<typeof createWhisperWorker> | null>(null)
@@ -100,11 +114,19 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
     return () => unsubscribeWarmingStatus(setWarmingStatus)
   }, [])
 
-  // Auto-upgrade to the best already-cached model on mount (Phase 3)
+  // Auto-upgrade to the best already-cached model on mount (Phase 3).
+  // Only promotes from the default (base). A user who explicitly chose tiny
+  // for speed keeps their preference; we do not override a deliberate choice.
   useEffect(() => {
     getBestCachedModel().then(best => {
       if (best !== 'Xenova/whisper-base') {
-        setModelId(prev => prev === 'Xenova/whisper-base' ? best : prev)
+        setModelId(prev => {
+          if (prev === 'Xenova/whisper-base') {
+            saveModelPref(best)
+            return best
+          }
+          return prev
+        })
       }
     }).catch(() => {})
   }, [])
@@ -217,6 +239,7 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
                 key={m.id}
                 onClick={() => {
                   setModelId(m.id)
+                  saveModelPref(m.id)
                   if (workerRef.current) {
                     workerRef.current.terminate()
                     workerRef.current = null

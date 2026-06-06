@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
+import { recordToolUsage } from '../lib/projectSession'
 
 export interface BlurRegion {
   id:   number
@@ -53,6 +54,7 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
       return
     }
     setValidationError(null)
+    recordToolUsage('faceBlur').catch(() => {})
     onChange([...regions, { id: nextId++, x: cx, y: cy, w: cw, h: ch, note: label || 'Region' }])
     setAdding(false)
     setLabel('')

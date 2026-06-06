@@ -65,7 +65,7 @@ async function waitForExportEnd(): Promise<void> {
   return new Promise(resolve => {
     const check = setInterval(() => {
       if (!isFFmpegBusy()) { clearInterval(check); resolve() }
-    }, 30_000)
+    }, 5_000)
   })
 }
 
