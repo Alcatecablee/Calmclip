@@ -285,18 +285,21 @@ export default function VideoControls({
   const trimEndPct   = duration > 0 ? (trimEnd     / duration) * 100 : 100
   const playheadPct  = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0
 
+  // Tighten layout on portrait / square previews (< 400 px wide)
+  const isNarrow = parseInt(maxWidth, 10) < 400
+
   return (
     <div
       style={{
         width:          '100%',
         maxWidth:       maxWidth,
-        background:     '#1c1c24',
+        background:     'var(--bg-panel, #1c1c24)',
         borderRadius:   '0 0 12px 12px',
         borderTop:      '1px solid rgba(255,255,255,0.06)',
-        padding:        '8px 12px',
+        padding:        isNarrow ? '6px 10px' : '8px 12px',
         display:        'flex',
         flexDirection:  'column',
-        gap:            6,
+        gap:            5,
       }}
     >
       {playError && (
@@ -305,19 +308,20 @@ export default function VideoControls({
         </div>
       )}
 
+      {/* Waveform / seek bar */}
       <div
         ref={sliderRef}
         onMouseDown={handleMouseDown}
         style={{
           position:   'relative',
-          height:     36,
+          height:     isNarrow ? 28 : 36,
           display:    'flex',
           alignItems: 'center',
           cursor:     'pointer',
           userSelect: 'none',
         }}
       >
-        <div style={{ width: '100%', height: 28, borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ width: '100%', height: isNarrow ? 22 : 28, borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
           <canvas
             ref={waveformRef}
             width={600}
@@ -355,12 +359,13 @@ export default function VideoControls({
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* Playback controls row — single line at all widths */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'nowrap', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isNarrow ? 7 : 12, flexShrink: 0 }}>
           <Tooltip text={isPlaying ? 'Pause' : 'Play'} position="top">
             <button
               onClick={onTogglePlay}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s ease' }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s ease', flexShrink: 0 }}
               onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')}
               onMouseLeave={e => (e.currentTarget.style.color = '#ffffff')}
             >
@@ -368,13 +373,13 @@ export default function VideoControls({
             </button>
           </Tooltip>
 
-          <span style={{ fontSize: 10, fontFamily: "'SF Mono','Fira Code',monospace", color: 'rgba(255,255,255,0.54)', userSelect: 'none' }}>
+          <span style={{ fontSize: 10, fontFamily: "'SF Mono','Fira Code',monospace", color: 'rgba(255,255,255,0.54)', userSelect: 'none', whiteSpace: 'nowrap' }}>
             {formatTime(Math.max(0, currentTime - trimStart))} / {formatTime(Math.max(0, trimEnd - trimStart))}
           </span>
 
-          {videoUrl && (
+          {videoUrl && !isNarrow && (
             <span
-              style={{ fontSize: 9, fontFamily: "'SF Mono','Fira Code',monospace", color: 'rgba(255,255,255,0.25)', userSelect: 'none', letterSpacing: '0.03em' }}
+              style={{ fontSize: 9, fontFamily: "'SF Mono','Fira Code',monospace", color: 'rgba(255,255,255,0.25)', userSelect: 'none', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}
               title="Space: play/pause, Arrow keys: step one frame"
             >
               Space&nbsp;&#x00B7;&nbsp;&#x2190;&#x2192;
@@ -382,16 +387,16 @@ export default function VideoControls({
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isNarrow ? 7 : 12, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <Tooltip text={isMuted || volume === 0 ? 'Unmute' : 'Mute'} position="top">
               <button
                 onClick={() => onMutedChange(!isMuted)}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'rgba(255,255,255,0.54)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s ease' }}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'rgba(255,255,255,0.54)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s ease', flexShrink: 0 }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
                 onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.54)')}
               >
-                {isMuted || volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                {isMuted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
               </button>
             </Tooltip>
 
@@ -402,16 +407,16 @@ export default function VideoControls({
               step={0.05}
               value={isMuted ? 0 : volume}
               onChange={e => onVolumeChange(parseFloat(e.target.value))}
-              style={{ width: 50, height: 3, background: 'rgba(255,255,255,0.15)', borderRadius: 1.5, cursor: 'pointer' }}
+              style={{ width: isNarrow ? 36 : 50, height: 3, background: 'rgba(255,255,255,0.15)', borderRadius: 1.5, cursor: 'pointer', flexShrink: 0 }}
             />
           </div>
 
-          {videoUrl && (
+          {videoUrl && !isNarrow && (
             <div
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0 }}
               title="Real-time loudness (dBFS). Green: below -18, Yellow: -18 to -6, Red: above -6"
             >
-              <canvas ref={loudnessCanvasRef} width={8} height={32} style={{ display: 'block', borderRadius: 2 }} />
+              <canvas ref={loudnessCanvasRef} width={8} height={28} style={{ display: 'block', borderRadius: 2 }} />
               <span
                 ref={dbReadoutRef}
                 style={{ fontSize: 8, fontFamily: "'SF Mono','Fira Code',monospace", color: 'rgba(255,255,255,0.28)', userSelect: 'none', lineHeight: 1, minWidth: 16, textAlign: 'center' }}
@@ -424,11 +429,11 @@ export default function VideoControls({
           <Tooltip text={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} position="top">
             <button
               onClick={onToggleFullscreen}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'rgba(255,255,255,0.54)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s ease' }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'rgba(255,255,255,0.54)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s ease', flexShrink: 0 }}
               onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
               onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.54)')}
             >
-              {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
             </button>
           </Tooltip>
         </div>
