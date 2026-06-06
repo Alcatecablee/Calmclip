@@ -257,47 +257,31 @@ export default function TrimSlider({
       )}
 
       {/* Waveform + dual-range overlay */}
-      <div style={{ position: 'relative', height: 36, display: 'flex', alignItems: 'center' }}>
+      <div className="dual-range-container">
         {/* Waveform canvas — full width, sits behind everything */}
         <canvas
           ref={waveformRef}
           width={WAVEFORM_BUCKETS}
-          height={36}
-          style={{
-            position:     'absolute',
-            inset:        0,
-            width:        '100%',
-            height:       '100%',
-            borderRadius: 4,
-            display:      'block',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* Track fill bar (kept for visual clarity of selected range) */}
-        <div
+          height={28}
           style={{
             position:      'absolute',
-            left:          `${startPct}%`,
-            width:         `${endPct - startPct}%`,
-            height:        2,
-            top:           '50%',
-            transform:     'translateY(-50%)',
-            background:    'var(--primary)',
-            borderRadius:  1,
-            opacity:       0.7,
+            inset:         0,
+            width:         '100%',
+            height:        '100%',
+            borderRadius:  4,
+            display:       'block',
             pointerEvents: 'none',
           }}
         />
 
-        {/* Range inputs */}
+        {/* Range inputs — pointer-events on thumbs handled by .dual-range-container CSS */}
         <input
           type="range"
           min={0}
           max={duration}
           step={0.1}
           value={start}
-          style={{ position: 'absolute', width: '100%', background: 'transparent', pointerEvents: 'none' }}
+          style={{ background: 'transparent' }}
           onChange={e => {
             const v = parseFloat(e.target.value)
             if (v < end - 0.5) onChange(v, end)
@@ -309,7 +293,7 @@ export default function TrimSlider({
           max={duration}
           step={0.1}
           value={end}
-          style={{ position: 'absolute', width: '100%', background: 'transparent', pointerEvents: 'none' }}
+          style={{ background: 'transparent' }}
           onChange={e => {
             const v = parseFloat(e.target.value)
             if (v > start + 0.5) onChange(start, v)
