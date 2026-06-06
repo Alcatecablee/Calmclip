@@ -794,7 +794,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.28, ease: 'easeOut' }}
             >
-              <div className="flex-1 flex items-center justify-center p-4 lg:p-8">
+              <div className="flex-1 flex items-center justify-center p-4 lg:p-8" style={{ minHeight: 0, overflow: 'hidden' }}>
                 <VideoPreview
                   videoRef={videoRef}
                   videoUrl={videoUrl}
@@ -1436,15 +1436,11 @@ export default function App() {
 
                   {/* Footer */}
                   <div
-                    className="px-5 py-3"
-                    style={{ borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}
+                    className="px-5"
+                    style={{ borderTop: '1px solid var(--border-subtle)', flexShrink: 0, padding: '7px 20px', display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}
                   >
-                    {file && (
-                      <div className="flex justify-center mb-2">
-                        <FileSizeReadout size={file.size} />
-                      </div>
-                    )}
-                    <p className="text-xs text-center" style={{ color: 'var(--text-dim)' }}>
+                    {file && <FileSizeReadout size={file.size} />}
+                    <p className="text-xs" style={{ color: 'var(--text-dim)', margin: 0 }}>
                       All processing runs locally. No file ever leaves your device.
                     </p>
                   </div>
