@@ -3,11 +3,31 @@ import { Mic, Loader2, CheckCircle2, AlertCircle, X, AlertTriangle } from 'lucid
 import {
   createWhisperWorker,
   extractAudioForWhisper,
+  getBestCachedModel,
   WHISPER_MODELS,
+  WHISPER_LANGUAGES,
   type WhisperModelId,
   type WhisperStatus,
   type TranscriptResult,
 } from '../lib/whisper'
+import { writeCapabilityHint, recordToolUsage } from '../lib/projectSession'
+import {
+  startWarmingQueue,
+  subscribeWarmingStatus,
+  unsubscribeWarmingStatus,
+  getWarmingStatus,
+  type WarmingStatus,
+} from '../lib/modelWarmer'
+
+const LANG_PREF_KEY = 'calmclip_lang_pref'
+
+function loadLangPref(): string {
+  try { return localStorage.getItem(LANG_PREF_KEY) ?? 'auto' } catch { return 'auto' }
+}
+
+function saveLangPref(code: string): void {
+  try { localStorage.setItem(LANG_PREF_KEY, code) } catch { /* ignore */ }
+}
 
 interface Props {
   file:       File | null
@@ -36,7 +56,9 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
   const [status, setStatus]       = useState<WhisperStatus>({ phase: 'idle' })
   const [elapsed, setElapsed]     = useState(0)
   const [modelId, setModelId]     = useState<WhisperModelId>('Xenova/whisper-base')
-  const workerRef                 = useRef<ReturnType<typeof createWhisperWorker> | null>(null)
+  const [language, setLanguage]       = useState<string>(loadLangPref)
+  const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
+  const workerRef                     = useRef<ReturnType<typeof createWhisperWorker> | null>(null)
   const elapsedIntervalRef        = useRef<number | null>(null)
   const transcribeStartRef        = useRef<number>(0)
   const lastPhaseRef              = useRef<WhisperStatus['phase']>('idle')
@@ -72,6 +94,21 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
     }
   }, [])
 
+  // Subscribe to background warming status for the pill UI (Phase 3)
+  useEffect(() => {
+    subscribeWarmingStatus(setWarmingStatus)
+    return () => unsubscribeWarmingStatus(setWarmingStatus)
+  }, [])
+
+  // Auto-upgrade to the best already-cached model on mount (Phase 3)
+  useEffect(() => {
+    getBestCachedModel().then(best => {
+      if (best !== 'Xenova/whisper-base') {
+        setModelId(prev => prev === 'Xenova/whisper-base' ? best : prev)
+      }
+    }).catch(() => {})
+  }, [])
+
   useEffect(() => {
     if (status.phase === 'transcribing') {
       if (elapsedIntervalRef.current === null) {
@@ -102,6 +139,7 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
     }
 
     setStatus({ phase: 'extracting-audio' })
+    recordToolUsage('transcribe').catch(() => {})
     try {
       const audio = await extractAudioForWhisper(file, trimStart, trimEnd)
       if (!workerRef.current) {
@@ -125,10 +163,16 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
             }
             const full = s.result.text.trim().replace(/\s+/g, ' ').slice(0, 80)
             if (full) onCaption(full)
+            // Phase 2: write language hint for future routing
+            if (s.detectedLanguage) {
+              writeCapabilityHint(s.detectedLanguage, modelId).catch(() => {})
+            }
+            // Phase 3: start background model warming
+            startWarmingQueue(modelId).catch(() => {})
           }
         })
       }
-      workerRef.current.run(audio, modelId)
+      workerRef.current.run(audio, modelId, language === 'auto' ? undefined : language)
     } catch (e) {
       setStatus({ phase: 'error', message: e instanceof Error ? e.message : 'Audio extraction failed.' })
     }
@@ -193,6 +237,51 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
                 <span style={{ fontSize: 9, opacity: 0.7 }}>{m.size}</span>
               </button>
             ))}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="whisper-lang"
+              style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
+            >
+              Language
+            </label>
+            <select
+              id="whisper-lang"
+              value={language}
+              onChange={e => {
+                setLanguage(e.target.value)
+                saveLangPref(e.target.value)
+                if (workerRef.current) {
+                  workerRef.current.terminate()
+                  workerRef.current = null
+                }
+                if (status.phase === 'done' || status.phase === 'error') {
+                  setStatus({ phase: 'idle' })
+                }
+              }}
+              style={{
+                width:           '100%',
+                height:          32,
+                padding:         '0 8px',
+                borderRadius:    6,
+                border:          '1px solid var(--border)',
+                background:      'var(--bg-surface)',
+                color:           'var(--text-muted)',
+                fontSize:        13,
+                cursor:          'pointer',
+                outline:         'none',
+                appearance:      'none',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.35)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+                backgroundRepeat:   'no-repeat',
+                backgroundPosition: 'right 8px center',
+                paddingRight:       28,
+              }}
+            >
+              {WHISPER_LANGUAGES.map(l => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
           </div>
 
           <div
@@ -384,9 +473,16 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
       )}
 
       {status.phase === 'done' && (
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: '#10b981' }}>
-          <Mic size={11} />
-          Caption filled from transcript. Edit it above if needed.
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: '#10b981' }}>
+            <Mic size={11} />
+            Caption filled from transcript. Edit it above if needed.
+          </div>
+          {status.detectedLanguage && language === 'auto' && (
+            <div className="text-xs" style={{ color: 'var(--text-faint)' }}>
+              Detected language: <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{status.detectedLanguage}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -413,6 +509,42 @@ export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onRes
             {TRANSCRIBE_TIPS[tipIdx]}
           </p>
         </div>
+      )}
+
+      {warmingStatus && (
+        <button
+          onClick={() => setWarmingStatus(null)}
+          title="Click to dismiss"
+          style={{
+            display:        'flex',
+            alignItems:     'center',
+            gap:            8,
+            padding:        '7px 10px',
+            borderRadius:   8,
+            background:     'var(--bg-surface)',
+            border:         '1px solid var(--border)',
+            cursor:         'pointer',
+            width:          '100%',
+            textAlign:      'left',
+          }}
+        >
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--border-subtle, var(--border))', overflow: 'hidden' }}>
+            <div
+              style={{
+                height:     '100%',
+                width:      `${warmingStatus.progress}%`,
+                background: 'var(--primary)',
+                borderRadius: 2,
+                transition: 'width 0.5s ease',
+              }}
+            />
+          </div>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {warmingStatus.done
+              ? `Whisper ${warmingStatus.modelLabel} cached`
+              : `Upgrading accuracy... ${warmingStatus.progress}%`}
+          </span>
+        </button>
       )}
     </div>
   )

@@ -28,7 +28,7 @@ function computeAggregateProgress(): number {
 }
 
 self.addEventListener('message', async (event: MessageEvent) => {
-  const { type, audio, durationSec, model } = event.data as { type: string; audio: Float32Array; durationSec: number; model: string }
+  const { type, audio, durationSec, model, language } = event.data as { type: string; audio: Float32Array; durationSec: number; model: string; language?: string }
 
   if (type !== 'transcribe') return
 
@@ -125,7 +125,7 @@ self.addEventListener('message', async (event: MessageEvent) => {
       return_timestamps: 'word',
       chunk_length_s:    30,
       stride_length_s:   5,
-      language:          'english',
+      ...(language ? { language } : {}),
       task:              'transcribe',
     })
 
@@ -140,7 +140,7 @@ self.addEventListener('message', async (event: MessageEvent) => {
     })).filter((c: { text: string }) => c.text.length > 0)
 
     if (progressInterval !== null) clearInterval(progressInterval)
-    self.postMessage({ type: 'result', result: { ...result, text: cleanText, chunks: cleanChunks } })
+    self.postMessage({ type: 'result', result: { ...result, text: cleanText, chunks: cleanChunks }, detectedLanguage: result.language ?? null })
   } catch (err) {
     if (progressInterval !== null) clearInterval(progressInterval)
     self.postMessage({ type: 'error', message: err instanceof Error ? err.message : 'Transcription failed.' })

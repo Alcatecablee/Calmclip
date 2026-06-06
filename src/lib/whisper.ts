@@ -15,8 +15,33 @@ export type WhisperStatus =
   | { phase: 'loading-model'; progress: number; label: string }
   | { phase: 'extracting-audio' }
   | { phase: 'transcribing'; progress: number; durationSec: number; backend?: 'webgpu' | 'wasm' }
-  | { phase: 'done'; result: TranscriptResult }
+  | { phase: 'done'; result: TranscriptResult; detectedLanguage?: string }
   | { phase: 'error'; message: string }
+
+// Top languages by global speaker count that Whisper handles reliably.
+// 'auto' means no language hint: Whisper detects from audio.
+export const WHISPER_LANGUAGES: { code: string; label: string }[] = [
+  { code: 'auto',       label: 'Auto-detect' },
+  { code: 'english',    label: 'English' },
+  { code: 'spanish',    label: 'Spanish' },
+  { code: 'portuguese', label: 'Portuguese' },
+  { code: 'french',     label: 'French' },
+  { code: 'german',     label: 'German' },
+  { code: 'italian',    label: 'Italian' },
+  { code: 'dutch',      label: 'Dutch' },
+  { code: 'polish',     label: 'Polish' },
+  { code: 'russian',    label: 'Russian' },
+  { code: 'ukrainian',  label: 'Ukrainian' },
+  { code: 'arabic',     label: 'Arabic' },
+  { code: 'turkish',    label: 'Turkish' },
+  { code: 'hindi',      label: 'Hindi' },
+  { code: 'chinese',    label: 'Chinese' },
+  { code: 'japanese',   label: 'Japanese' },
+  { code: 'korean',     label: 'Korean' },
+  { code: 'swedish',    label: 'Swedish' },
+  { code: 'norwegian',  label: 'Norwegian' },
+  { code: 'danish',     label: 'Danish' },
+]
 
 export async function extractAudioForWhisper(
   file: File,
@@ -177,6 +202,7 @@ export function createWhisperWorker(
               }))
             : [],
         },
+        detectedLanguage: e.data.detectedLanguage ?? undefined,
       })
     } else if (type === 'error') {
       onStatus({ phase: 'error', message: e.data.message })
@@ -184,9 +210,39 @@ export function createWhisperWorker(
   }
 
   return {
-    run:       (audio: Float32Array, model: WhisperModelId) => worker.postMessage({ type: 'transcribe', audio, model, durationSec: audio.length / 16000 }),
+    run:       (audio: Float32Array, model: WhisperModelId, language?: string) => worker.postMessage({ type: 'transcribe', audio, model, durationSec: audio.length / 16000, language }),
     terminate: () => worker.terminate(),
   }
+}
+
+// Phase 3: returns the best Whisper model that is verifiably cached in the browser.
+// Falls back to whisper-base (the default) if nothing better is confirmed present.
+export async function getBestCachedModel(): Promise<WhisperModelId> {
+  const ORDER: WhisperModelId[] = [
+    'Xenova/whisper-medium',
+    'Xenova/whisper-small',
+    'Xenova/whisper-base',
+  ]
+  try {
+    const { readModelSentinels, clearModelSentinel } = await import('./projectSession')
+    const sentinels = new Set(await readModelSentinels())
+    for (const modelId of ORDER) {
+      if (!sentinels.has(modelId)) continue
+      const ok = await verifyCachedShard(modelId)
+      if (ok) return modelId
+      await clearModelSentinel(modelId)
+    }
+  } catch { /* fall through */ }
+  return 'Xenova/whisper-base'
+}
+
+async function verifyCachedShard(modelId: string): Promise<boolean> {
+  try {
+    const cache = await caches.open('transformers-cache')
+    const keys  = await cache.keys()
+    const slug  = modelId.split('/').pop() ?? modelId
+    return keys.some(r => r.url.includes(slug) && r.url.includes('encoder_model'))
+  } catch { return false }
 }
 
 export const FILLER_WORDS = ['um', 'uh', 'like', 'you know', 'basically', 'actually', 'literally', 'sort of', 'kind of', 'right']
