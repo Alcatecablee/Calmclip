@@ -1284,7 +1284,6 @@ export default function App() {
                               videoDuration={duration}
                               onTranscribed={ws => { setWords(ws); if (ws.length > 0) recordToolUsage('captions').catch(() => {}) }}
                               onResult={(r, lang) => { setTranscriptResult(r); setTranscriptLanguage(lang) }}
-                              onProGate={!proActive ? openProModal : undefined}
                             />
 
                             {/* Step 2: Edit words */}

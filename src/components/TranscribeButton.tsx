@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, AlertCircle, CheckCircle2, Wand2 } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2, Wand2, X } from 'lucide-react'
 import { extractAudioFromVideo } from '@/lib/audioExtractor'
 import { transcribeToTimedWords } from '@/lib/whisperTranscribe'
 import type { Word } from '@/lib/captionEngine'
@@ -81,6 +81,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
   const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
   const [pillDismissed, setPillDismissed] = useState(false)
   const fallbackIntervalRef         = useRef<ReturnType<typeof setInterval> | null>(null)
+  const cancelTranscribeRef         = useRef<(() => void) | null>(null)
 
   // Auto-select the best already-cached model on mount.
   useEffect(() => {
@@ -147,7 +148,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
     let transcript: string
     let detectedLanguage: string | undefined
     try {
-      const result = await transcribeToTimedWords(
+      const handle = transcribeToTimedWords(
         audioBlob,
         videoDuration || 60,
         (msg) => {
@@ -169,11 +170,21 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
         modelId,
         language !== 'auto' ? language : undefined,
       )
+      cancelTranscribeRef.current = handle.cancel
+      const result = await handle.promise
+      cancelTranscribeRef.current = null
       words            = result.words
       transcript       = result.transcript
       detectedLanguage = result.detectedLanguage
     } catch (e) {
       clearFallback()
+      cancelTranscribeRef.current = null
+      if ((e as Error).message === 'cancelled') {
+        setPhase(PHASES.idle)
+        setError(null)
+        setStatus('')
+        return
+      }
       setPhase(PHASES.error)
       setError('Transcription failed: ' + (e as Error).message)
       return
@@ -293,14 +304,42 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
               <Loader2 className="w-3 h-3 animate-spin shrink-0" />
               <span>{stepLabels[phase]}</span>
             </div>
-            <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--primary)' }}>
-              {overallPct}%
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--primary)' }}>
+                {overallPct}%
+              </span>
+              <button
+                onClick={() => {
+                  cancelTranscribeRef.current?.()
+                  clearFallback()
+                  setPhase(PHASES.idle)
+                  setError(null)
+                  setStatus('')
+                  setOverallPct(0)
+                }}
+                title="Cancel"
+                style={{
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  width:          18,
+                  height:         18,
+                  borderRadius:   4,
+                  border:         '1px solid var(--border)',
+                  background:     'transparent',
+                  color:          'var(--text-faint)',
+                  cursor:         'pointer',
+                  flexShrink:     0,
+                }}
+              >
+                <X size={10} />
+              </button>
+            </div>
           </div>
 
           {phase === PHASES.downloading && (
             <p className="mt-1 text-[10px]" style={{ color: 'var(--text-faint)' }}>
-              One-time download. After this, the app works fully offline.
+              One-time download (~37 MB). After this, the app works fully offline.
             </p>
           )}
 

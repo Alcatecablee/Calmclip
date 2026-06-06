@@ -27,117 +27,145 @@ function distributeWords(transcript: string, durationSeconds: number): Word[] {
   }))
 }
 
-export async function transcribeToTimedWords(
+export interface TranscribeHandle {
+  promise: Promise<{ transcript: string; words: Word[]; detectedLanguage?: string }>
+  cancel:  () => void
+}
+
+export function transcribeToTimedWords(
   audioBlob: Blob,
   videoDurationSeconds: number,
   onStatusUpdate?: (msg: string) => void,
   model?: string,
   language?: string,
-): Promise<{ transcript: string; words: Word[]; detectedLanguage?: string }> {
-  console.log(TAG, 'transcribeToTimedWords: audioBlob size:', audioBlob.size, 'duration:', videoDurationSeconds)
+): TranscribeHandle {
+  let workerRef:  Worker | null                         = null
+  let rejectRef:  ((reason?: unknown) => void) | null   = null
 
-  onStatusUpdate?.('Decoding audio...')
-  const audio = await blobToFloat32Array(audioBlob)
-  console.log(TAG, 'decoded Float32Array length:', audio.length)
+  const cancel = () => {
+    workerRef?.terminate()
+    workerRef = null
+    rejectRef?.(new Error('cancelled'))
+    rejectRef = null
+  }
 
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(
-      new URL('../workers/whisper.worker.ts', import.meta.url),
-      { type: 'module' },
-    )
+  const promise = (async () => {
+    console.log(TAG, 'transcribeToTimedWords: audioBlob size:', audioBlob.size, 'duration:', videoDurationSeconds)
 
-    worker.onmessage = (event: MessageEvent) => {
-      const msg = event.data as {
-        type: string
-        info?: { status: string; progress?: number; file?: string }
-        durationSec?: number
-        backend?: string
-        progress?: number
-        result?: { text: string; chunks?: Array<{ text: string; timestamp: [number, number | null] }> }
-        message?: string
-        detectedLanguage?: string
+    onStatusUpdate?.('Decoding audio...')
+    const audio = await blobToFloat32Array(audioBlob)
+    console.log(TAG, 'decoded Float32Array length:', audio.length)
+
+    return new Promise<{ transcript: string; words: Word[]; detectedLanguage?: string }>((resolve, reject) => {
+      rejectRef = reject
+
+      const worker = new Worker(
+        new URL('../workers/whisper.worker.ts', import.meta.url),
+        { type: 'module' },
+      )
+      workerRef = worker
+
+      worker.onmessage = (event: MessageEvent) => {
+        const msg = event.data as {
+          type: string
+          info?: { status: string; progress?: number; file?: string }
+          durationSec?: number
+          backend?: string
+          progress?: number
+          result?: { text: string; chunks?: Array<{ text: string; timestamp: [number, number | null] }> }
+          message?: string
+          detectedLanguage?: string
+        }
+
+        if (msg.type === 'model-progress') {
+          const info = msg.info
+          if (!info) return
+          if (info.status === 'init') {
+            onStatusUpdate?.('Loading Whisper model...')
+          } else if ((info.status === 'progress' || info.status === 'download') && info.progress != null) {
+            const pct = Math.round(info.progress)
+            onStatusUpdate?.(`Downloading model: ${pct}%`)
+          } else if (info.status === 'done' || info.status === 'ready') {
+            onStatusUpdate?.('Model ready, transcribing...')
+          }
+        } else if (msg.type === 'transcribing') {
+          onStatusUpdate?.('Transcribing audio...')
+        } else if (msg.type === 'transcribe-progress' && msg.progress != null) {
+          onStatusUpdate?.(`Transcribing... ${msg.progress}%`)
+        } else if (msg.type === 'result') {
+          worker.terminate()
+          workerRef  = null
+          rejectRef  = null
+
+          const result = msg.result
+          if (!result) {
+            reject(new Error('Worker returned empty result.'))
+            return
+          }
+
+          const transcript = result.text || ''
+          if (!transcript.trim()) {
+            reject(new Error('Whisper returned an empty transcript. Check that your video has clear speech.'))
+            return
+          }
+
+          let words: Word[] = []
+
+          if (result.chunks && result.chunks.length > 0) {
+            words = result.chunks
+              .filter(c => c.timestamp && c.timestamp[0] !== null)
+              .map(c => ({
+                text: c.text.trim(),
+                startTime: c.timestamp[0] ?? 0,
+                endTime: c.timestamp[1] ?? (c.timestamp[0]! + 0.5),
+              }))
+              .filter(w => w.text.length > 0)
+            console.log(TAG, 'words from chunks:', words.length)
+          }
+
+          if (words.length === 0) {
+            console.warn(TAG, 'no timestamp chunks, using distributeWords fallback')
+            words = distributeWords(transcript, videoDurationSeconds)
+          }
+
+          words = words.map(w => ({
+            ...w,
+            startTime: Math.max(0, Math.min(w.startTime, videoDurationSeconds)),
+            endTime: Math.max(0, Math.min(w.endTime, videoDurationSeconds)),
+          }))
+
+          console.log(TAG, 'done:', words.length, 'words')
+          onStatusUpdate?.('Done')
+          resolve({ transcript, words, detectedLanguage: msg.detectedLanguage })
+        } else if (msg.type === 'error') {
+          worker.terminate()
+          workerRef = null
+          rejectRef = null
+          reject(new Error(msg.message ?? 'Transcription failed.'))
+        }
       }
 
-      if (msg.type === 'model-progress') {
-        const info = msg.info
-        if (!info) return
-        if (info.status === 'init') {
-          onStatusUpdate?.('Loading Whisper model...')
-        } else if ((info.status === 'progress' || info.status === 'download') && info.progress != null) {
-          const pct = Math.round(info.progress)
-          onStatusUpdate?.(`Downloading model: ${pct}%`)
-        } else if (info.status === 'done' || info.status === 'ready') {
-          onStatusUpdate?.('Model ready, transcribing...')
-        }
-      } else if (msg.type === 'transcribing') {
-        onStatusUpdate?.('Transcribing audio...')
-      } else if (msg.type === 'transcribe-progress' && msg.progress != null) {
-        onStatusUpdate?.(`Transcribing... ${msg.progress}%`)
-      } else if (msg.type === 'result') {
+      worker.onerror = (err) => {
         worker.terminate()
-
-        const result = msg.result
-        if (!result) {
-          reject(new Error('Worker returned empty result.'))
-          return
-        }
-
-        const transcript = result.text || ''
-        if (!transcript.trim()) {
-          reject(new Error('Whisper returned an empty transcript. Check that your video has clear speech.'))
-          return
-        }
-
-        let words: Word[] = []
-
-        if (result.chunks && result.chunks.length > 0) {
-          words = result.chunks
-            .filter(c => c.timestamp && c.timestamp[0] !== null)
-            .map(c => ({
-              text: c.text.trim(),
-              startTime: c.timestamp[0] ?? 0,
-              endTime: c.timestamp[1] ?? (c.timestamp[0]! + 0.5),
-            }))
-            .filter(w => w.text.length > 0)
-          console.log(TAG, 'words from chunks:', words.length)
-        }
-
-        if (words.length === 0) {
-          console.warn(TAG, 'no timestamp chunks, using distributeWords fallback')
-          words = distributeWords(transcript, videoDurationSeconds)
-        }
-
-        words = words.map(w => ({
-          ...w,
-          startTime: Math.max(0, Math.min(w.startTime, videoDurationSeconds)),
-          endTime: Math.max(0, Math.min(w.endTime, videoDurationSeconds)),
-        }))
-
-        console.log(TAG, 'done:', words.length, 'words')
-        onStatusUpdate?.('Done')
-        resolve({ transcript, words, detectedLanguage: msg.detectedLanguage })
-      } else if (msg.type === 'error') {
-        worker.terminate()
-        reject(new Error(msg.message ?? 'Transcription failed.'))
+        workerRef = null
+        rejectRef = null
+        console.error(TAG, 'worker onerror — message:', err.message, '| file:', err.filename, '| line:', err.lineno, '| col:', err.colno)
+        reject(new Error(err.message || 'Worker failed to load. Check browser console for details.'))
       }
-    }
 
-    worker.onerror = (err) => {
-      worker.terminate()
-      console.error(TAG, 'worker onerror — message:', err.message, '| file:', err.filename, '| line:', err.lineno, '| col:', err.colno)
-      reject(new Error(err.message || 'Worker failed to load. Check browser console for details.'))
-    }
+      worker.addEventListener('error', (err) => {
+        console.error(TAG, 'worker error event — message:', err.message, '| file:', err.filename, '| line:', err.lineno)
+      })
 
-    worker.addEventListener('error', (err) => {
-      console.error(TAG, 'worker error event — message:', err.message, '| file:', err.filename, '| line:', err.lineno)
+      worker.postMessage({
+        type: 'transcribe',
+        audio,
+        durationSec: videoDurationSeconds,
+        model: model ?? 'Xenova/whisper-base',
+        ...(language ? { language } : {}),
+      }, [audio.buffer])
     })
+  })()
 
-    worker.postMessage({
-      type: 'transcribe',
-      audio,
-      durationSec: videoDurationSeconds,
-      model: model ?? 'Xenova/whisper-base',
-      ...(language ? { language } : {}),
-    }, [audio.buffer])
-  })
+  return { promise, cancel }
 }
