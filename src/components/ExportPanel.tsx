@@ -19,6 +19,27 @@ const RATIO_PRESETS = [
   { label: 'Original',  desc: 'Keep source resolution', w: null, h: null },
 ] as const
 
+const FREE_MAX_SHORT_SIDE = 720
+
+/**
+ * Caps export dimensions so the shorter side is at most FREE_MAX_SHORT_SIDE.
+ * Proportional scaling preserves aspect ratio.
+ * For the "Original" preset (w/h are null), the video's natural dimensions are used.
+ */
+function capTo720p(
+  w: number | null,
+  h: number | null,
+  videoW: number,
+  videoH: number,
+): [number, number] {
+  const actualW = w ?? videoW
+  const actualH = h ?? videoH
+  const short = Math.min(actualW, actualH)
+  if (short <= FREE_MAX_SHORT_SIDE) return [actualW, actualH]
+  const scale = FREE_MAX_SHORT_SIDE / short
+  return [Math.round(actualW * scale), Math.round(actualH * scale)]
+}
+
 interface Props {
   videoRef:       React.RefObject<HTMLVideoElement | null>
   captionGroups:  CaptionGroup[]
@@ -38,6 +59,7 @@ interface Props {
   loudnessTarget?: LoudnessTarget
   denoiseAudio?:   boolean
   onProGate?:      () => void
+  isPro?:          boolean
 }
 
 export default function ExportPanel({
@@ -59,6 +81,7 @@ export default function ExportPanel({
   loudnessTarget = 'off',
   denoiseAudio   = false,
   onProGate,
+  isPro          = false,
 }: Props) {
   const [phase, setPhase]             = useState<'idle' | 'processing' | 'done'>('idle')
   const [progress, setProgress]       = useState(0)
@@ -83,13 +106,22 @@ export default function ExportPanel({
 
     const allManualCuts = [...manualCuts, ...fillerCuts]
 
+    // Free users: cap to 720p (short side max 720px). Pro users: use full preset dimensions.
+    let exportW: number | null = preset.w
+    let exportH: number | null = preset.h
+    if (!isPro) {
+      const videoW = videoRef.current.videoWidth  || 1280
+      const videoH = videoRef.current.videoHeight || 720
+      ;[exportW, exportH] = capTo720p(preset.w, preset.h, videoW, videoH)
+    }
+
     try {
       const blob = await exportVideoWithCaptions({
         videoElement:   videoRef.current,
         captionGroups:  captionGroups || [],
         captionStyle,
-        targetWidth:    preset.w,
-        targetHeight:   preset.h,
+        targetWidth:    exportW,
+        targetHeight:   exportH,
         trimStart:      trimStart ?? 0,
         trimEnd:        trimEnd   ?? null,
         cropMode,
@@ -127,21 +159,33 @@ export default function ExportPanel({
           <div className="space-y-1.5">
             <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>Output Ratio</p>
             <div className="grid grid-cols-3 gap-1">
-              {RATIO_PRESETS.map((preset) => (
-                <button
-                  key={preset.label}
-                  onClick={() => onRatioChange(preset.label)}
-                  className="rounded-md px-2 py-1.5 text-center transition-colors"
-                  style={{
-                    border:     `1px solid ${ratio === preset.label ? 'var(--primary)' : 'var(--border)'}`,
-                    background:  ratio === preset.label ? 'var(--primary-a8)' : 'var(--bg-surface)',
-                    color:       ratio === preset.label ? 'var(--primary)' : 'var(--text-muted)',
-                  }}
-                >
-                  <div className="text-[11px] font-semibold leading-tight">{preset.label}</div>
-                  <div className="text-[9px] leading-tight mt-0.5 opacity-70">{preset.desc}</div>
-                </button>
-              ))}
+              {RATIO_PRESETS.map((preset) => {
+                let resLabel: string
+                if (preset.w === null || preset.h === null) {
+                  resLabel = isPro ? 'Source res.' : '720p cap'
+                } else if (isPro) {
+                  resLabel = `${preset.w}x${preset.h}`
+                } else {
+                  const [cw, ch] = capTo720p(preset.w, preset.h, 1280, 720)
+                  resLabel = `${cw}x${ch}`
+                }
+                return (
+                  <button
+                    key={preset.label}
+                    onClick={() => onRatioChange(preset.label)}
+                    className="rounded-md px-2 py-1.5 text-center transition-colors"
+                    style={{
+                      border:     `1px solid ${ratio === preset.label ? 'var(--primary)' : 'var(--border)'}`,
+                      background:  ratio === preset.label ? 'var(--primary-a8)' : 'var(--bg-surface)',
+                      color:       ratio === preset.label ? 'var(--primary)' : 'var(--text-muted)',
+                    }}
+                  >
+                    <div className="text-[11px] font-semibold leading-tight">{preset.label}</div>
+                    <div className="text-[9px] leading-tight mt-0.5 opacity-70">{preset.desc}</div>
+                    <div className="text-[9px] leading-tight mt-0.5 tabular-nums" style={{ color: ratio === preset.label ? 'var(--primary)' : 'var(--text-dim)', opacity: 0.85 }}>{resLabel}</div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -152,16 +196,21 @@ export default function ExportPanel({
           )}
 
           <Button
-            onClick={() => { if (onProGate) { onProGate(); return } handleExport() }}
+            onClick={handleExport}
             className="w-full font-semibold"
             style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
           >
             <Film className="w-4 h-4 mr-2" />
             Export Video
-            {onProGate && (
-              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'rgba(255,255,255,0.22)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>
+            {!isPro && (
+              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 600, background: 'rgba(255,255,255,0.18)', borderRadius: 3, padding: '1px 5px' }}>720p</span>
             )}
           </Button>
+          {!isPro && (
+            <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>
+              Free exports are capped at 720p. Upgrade to Pro for 1080p.
+            </p>
+          )}
           {(!captionGroups || captionGroups.length === 0) && (
             <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>
               No captions added yet — video will export without captions.

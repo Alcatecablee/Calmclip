@@ -291,7 +291,7 @@ export default function ExportPresets({
                       </div>
                       <button
                         onClick={() => { if (onProGate) { onProGate(); return } onApply(p) }}
-                        className="text-xs px-2 py-0.5 rounded flex-shrink-0"
+                        className="flex items-center gap-1 text-xs px-2 py-0.5 rounded flex-shrink-0"
                         style={{
                           background: 'var(--primary-a10)',
                           border:     '1px solid var(--primary-a20)',
@@ -301,6 +301,7 @@ export default function ExportPresets({
                         title="Load this preset's settings"
                       >
                         Apply
+                        {onProGate && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: 'var(--primary-a10)', color: 'var(--primary)', borderRadius: 3, padding: '1px 5px' }}>PRO</span>}
                       </button>
                       <button
                         onClick={() => startRename(p)}

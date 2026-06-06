@@ -37,6 +37,7 @@ export function useSession({ file, step, saveSnapshot, onApplySession }: UseSess
   const [savedSessions,      setSavedSessions]      = useState<SessionData[]>([])
   const [showSessionsModal,  setShowSessionsModal]  = useState(false)
   const [pendingLoadSession, setPendingLoadSession] = useState<SessionData | null>(null)
+  const [isDirty,            setIsDirty]            = useState(false)
 
   const snapshotRef      = useRef(saveSnapshot)
   const onApplyRef       = useRef(onApplySession)
@@ -70,6 +71,7 @@ export function useSession({ file, step, saveSnapshot, onApplySession }: UseSess
 
   useEffect(() => {
     if (!file || step !== 'edit') return
+    setIsDirty(true)
     const snap = snapshotRef.current
     const t = setTimeout(() => {
       saveSession(file, {
@@ -100,6 +102,7 @@ export function useSession({ file, step, saveSnapshot, onApplySession }: UseSess
           setSessionSaveError(result.error ?? 'Session could not be saved.')
         } else {
           setSessionSaveError(null)
+          setIsDirty(false)
         }
       })
     }, 800)
@@ -119,6 +122,7 @@ export function useSession({ file, step, saveSnapshot, onApplySession }: UseSess
     setSessionBanner,
     sessionSaveError,
     setSessionSaveError,
+    isDirty,
     savedSessions,
     showSessionsModal,
     setShowSessionsModal,

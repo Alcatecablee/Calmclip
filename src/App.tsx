@@ -129,6 +129,7 @@ export default function App() {
   const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false)
   const [proActive,    setProActive]    = useState(() => checkIsPro())
   const [showProModal, setShowProModal] = useState(false)
+  const [fps,          setFps]          = useState<number | null>(null)
   const [proModalView, setProModalView] = useState<'manage' | 'unlock' | 'restore'>('unlock')
   const [showShortcutsModal, setShowShortcutsModal] = useState(false)
   const [openSection,    setOpenSection]    = useState<string>('trim')
@@ -180,6 +181,7 @@ export default function App() {
     setSessionBanner,
     sessionSaveError,
     setSessionSaveError,
+    isDirty,
     savedSessions,
     showSessionsModal,
     setShowSessionsModal,
@@ -333,6 +335,41 @@ export default function App() {
       if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current)
     }
   }, [])
+
+  // Detect video fps non-intrusively: sample frames on the user's first play.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v || step !== 'edit' || !videoUrl) return
+    setFps(null)
+    if (!('requestVideoFrameCallback' in v)) return
+
+    type FrameCB = (now: DOMHighResTimeStamp, meta: { presentedFrames: number }) => void
+    let handle: number | null = null
+    let samples: Array<{ frames: number; t: DOMHighResTimeStamp }> = []
+
+    const detect: FrameCB = (now, meta) => {
+      samples.push({ frames: meta.presentedFrames, t: now })
+      if (samples.length >= 4) {
+        const dt = samples[samples.length - 1].t - samples[0].t
+        const df = samples[samples.length - 1].frames - samples[0].frames
+        if (dt > 0 && df > 0) { setFps(Math.round(df / dt * 1000)); return }
+      }
+      if (samples.length < 8) {
+        handle = (v as any).requestVideoFrameCallback(detect)
+      }
+    }
+
+    const onFirstPlay = () => {
+      handle = (v as any).requestVideoFrameCallback(detect)
+      v.removeEventListener('play', onFirstPlay)
+    }
+    v.addEventListener('play', onFirstPlay)
+
+    return () => {
+      v.removeEventListener('play', onFirstPlay)
+      if (handle !== null) (v as any).cancelVideoFrameCallback(handle)
+    }
+  }, [videoUrl, step])
 
   // Trim start moved: relative silence timestamps are now wrong. Clear and notify.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -532,10 +569,12 @@ export default function App() {
         if (f?.type.startsWith('video/')) handleFile(f)
       }}
     >
-      <header className="navbar-header">
+      <header className={`navbar-header${step !== 'drop' ? ' navbar-header--slim' : ''}`}>
         <div className="navbar-logo-container">
-          <img src="/logo.png" alt="" aria-hidden="true" style={{ height: 30, width: 30, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
-          <img src="/wordmark.png" alt="CalmClip" style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0, marginTop: 5 }} />
+          <img src="/logo.png" alt="CalmClip" style={{ height: step !== 'drop' ? 24 : 30, width: step !== 'drop' ? 24 : 30, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+          {step === 'drop' && (
+            <img src="/wordmark.png" alt="" aria-hidden="true" style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0, marginTop: 5 }} />
+          )}
         </div>
 
         {step === 'drop' && (
@@ -563,6 +602,52 @@ export default function App() {
             </a>
           </nav>
         )}
+
+        {step !== 'drop' && file && (() => {
+          const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+          const baseName    = file.name.replace(/\.[^.]+$/, '')
+          const displayName = baseName.length > 22 ? baseName.slice(0, 22) + '\u2026' : baseName
+          const isTrimmed   = trimStart > 0.5 || (duration > 0 && trimEnd < duration - 0.5)
+          const trimmedDur  = Math.max(0, trimEnd - trimStart)
+          const bps         = proActive ? 5_000_000 : 2_500_000
+          const estMB       = trimmedDur > 0 ? Math.round(trimmedDur * bps / 8 / 1_000_000) : null
+          const TOOL_LABELS: Record<string, string> = {
+            'trim': 'Trim', 'silence-cutter': 'Silence', 'region-blur': 'Blur',
+            'loudness': 'Audio', 'captions': 'Captions', 'privacy': 'Privacy',
+            'watermark': 'Brand', 'thumbnail': 'Frame', 'export': 'Export',
+          }
+          const dotColor = sessionSaveError ? '#ef4444' : isDirty ? '#f59e0b' : '#10b981'
+          const dotTitle = sessionSaveError ? 'Save failed' : isDirty ? 'Saving\u2026' : 'All changes saved'
+          return (
+            <div className="navbar-file-badge">
+              <span
+                className="navbar-save-dot"
+                style={{ background: dotColor }}
+                title={dotTitle}
+                aria-label={dotTitle}
+              />
+              <span className="navbar-file-name">{displayName}</span>
+              <span className="navbar-badge-sep" aria-hidden="true">·</span>
+              {isTrimmed ? (
+                <span className="navbar-file-dur navbar-file-trim-active">
+                  {fmtTime(trimStart)}<span className="navbar-file-trim-arrow"> – </span>{fmtTime(trimEnd)}
+                </span>
+              ) : duration > 0 ? (
+                <span className="navbar-file-dur">{fmtTime(duration)}</span>
+              ) : null}
+              <span className="navbar-badge-rule" aria-hidden="true" />
+              <span className="navbar-badge-tool">{TOOL_LABELS[openSection] ?? ''}</span>
+              <span className="navbar-badge-rule navbar-badge-hide-md" aria-hidden="true" />
+              <span className="navbar-badge-meta navbar-badge-hide-md">
+                {fps !== null ? `${fps}fps` : <span style={{ opacity: 0.35 }}>—fps</span>}
+              </span>
+              <span className="navbar-badge-rule navbar-badge-hide-md" aria-hidden="true" />
+              <span className="navbar-badge-meta navbar-badge-hide-md">
+                {estMB !== null ? `~${estMB}\u00a0MB` : '\u2014'}
+              </span>
+            </div>
+          )
+        })()}
 
         <div className="navbar-btn-group">
           <Tooltip text="Keyboard shortcuts (?)" position="bottom">
@@ -1308,8 +1393,8 @@ export default function App() {
                               fillerCuts={fillerCuts}
                               onExported={setExportedSize}
                               loudnessTarget={loudness}
-                              onProGate={!proActive ? openProModal : undefined}
                               denoiseAudio={denoiseAudio}
+                              isPro={proActive}
                             />
 
                             {exportedSize > 0 && (

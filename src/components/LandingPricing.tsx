@@ -6,14 +6,14 @@ const FREE_FEATURES = [
   'Silence removal',
   'Loudness normalization',
   'Metadata stripping',
-  '720p MP4 export',
+  '720p WebM export (max 1280x720)',
   'Screen recording',
   'No signup required',
 ]
 
 const PRO_FEATURES = [
   'Everything in Free',
-  '1080p export + WebM and MOV formats',
+  '1080p WebM export (up to 1920x1080) + MOV format',
   'Batch export (all 4 ratios at once)',
   'Face blur (on-device, no upload)',
   'Watermark overlay',
