@@ -4,24 +4,28 @@ const FEATURES = [
   {
     Icon: ShieldCheck,
     label: 'Zero-Upload Architecture',
+    href: '/video-editor-no-upload',
     desc: 'Bypass your browser memory limits. Edit 4GB+ files instantly without ever uploading them to a server.',
     featured: true,
   },
   {
     Icon: Cpu,
     label: 'Hardware Acceleration',
+    href: null,
     desc: 'CalmClip directly accesses your GPU via WebCodecs to render and export H.264 video at lightning speeds.',
     featured: false,
   },
   {
     Icon: Sparkles,
     label: '100% Local AI',
+    href: null,
     desc: 'Auto-captions, silence removal, and face detection are powered by WASM models running securely on your machine.',
     featured: false,
   },
   {
     Icon: Globe,
     label: 'Browser-Native Ingestion',
+    href: '/record-screen-online',
     desc: 'Install the extension to pull videos straight out of Google Drive and Dropbox, or record active tabs seamlessly.',
     featured: false,
   },
@@ -79,15 +83,33 @@ export default function LandingFeatures() {
                 <div style={{ width: 220, flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                     <Icon size={13} color={f.featured ? 'var(--primary)' : 'var(--text-muted)'} />
-                    <span style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                      letterSpacing: '-0.015em',
-                      lineHeight: 1.3,
-                    }}>
-                      {f.label}
-                    </span>
+                    {f.href ? (
+                      <a
+                        href={f.href}
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: 'var(--text-primary)',
+                          letterSpacing: '-0.015em',
+                          lineHeight: 1.3,
+                          textDecoration: 'none',
+                        }}
+                        onMouseOver={e => (e.currentTarget.style.color = 'var(--primary)')}
+                        onMouseOut={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                      >
+                        {f.label}
+                      </a>
+                    ) : (
+                      <span style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        letterSpacing: '-0.015em',
+                        lineHeight: 1.3,
+                      }}>
+                        {f.label}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <p style={{
