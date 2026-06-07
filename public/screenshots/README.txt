@@ -5,11 +5,12 @@ Drop files here named exactly after the page slug. The page picks them up automa
 
 NAMING CONVENTION
 -----------------
-{slug}.gif     -- preferred for animated demos
+{slug}.mp4     -- best for animated demos (5-10x smaller than GIF, auto-loops silently)
+{slug}.gif     -- fallback for animated demos if you cannot produce MP4
 {slug}.webp    -- preferred for static screenshots (smallest file size)
 {slug}.png     -- fallback for static screenshots
 
-Priority order: .gif > .webp > .png (first found is used)
+Priority order: .mp4 > .gif > .webp > .png (first found is used)
 
 SLUGS (21 pages)
 ----------------

@@ -231,19 +231,25 @@ function StepList({ steps }: { steps: Array<{ label: string; desc: string }> }) 
 }
 
 function HeroMedia({ slug }: { slug: string }) {
-  const [src, setSrc] = useState<string | null>(null)
+  const [src, setSrc]       = useState<string | null>(null)
+  const [isVideo, setIsVideo] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
-    const exts = ['gif', 'webp', 'png']
+    const candidates = [
+      { ext: 'mp4',  video: true  },
+      { ext: 'gif',  video: false },
+      { ext: 'webp', video: false },
+      { ext: 'png',  video: false },
+    ]
     let cancelled = false
 
     async function probe() {
-      for (const ext of exts) {
+      for (const { ext, video } of candidates) {
         const url = `/screenshots/${slug}.${ext}`
         try {
           const res = await fetch(url, { method: 'HEAD' })
-          if (res.ok && !cancelled) { setSrc(url); return }
+          if (res.ok && !cancelled) { setSrc(url); setIsVideo(video); return }
         } catch { /* not found */ }
       }
     }
@@ -253,22 +259,49 @@ function HeroMedia({ slug }: { slug: string }) {
 
   if (!src) return null
 
+  const wrapStyle: React.CSSProperties = {
+    width:        '100%',
+    marginTop:    36,
+    borderRadius: 14,
+    overflow:     'hidden',
+    border:       '1px solid var(--border)',
+    background:   'var(--bg-surface)',
+    lineHeight:   0,
+  }
+
+  const mediaStyle: React.CSSProperties = {
+    width:          '100%',
+    height:         'auto',
+    display:        'block',
+    maxHeight:      480,
+    objectFit:      'cover',
+    objectPosition: 'top',
+  }
+
+  if (isVideo) {
+    return (
+      <div style={wrapStyle}>
+        <video
+          src={src}
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={mediaStyle}
+          onError={() => setSrc(null)}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div style={{
-      width:        '100%',
-      marginTop:    36,
-      borderRadius: 14,
-      overflow:     'hidden',
-      border:       '1px solid var(--border)',
-      background:   'var(--bg-surface)',
-      lineHeight:   0,
-    }}>
+    <div style={wrapStyle}>
       <img
         ref={imgRef}
         src={src}
         alt=""
         loading="lazy"
-        style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 480, objectFit: 'cover', objectPosition: 'top' }}
+        style={mediaStyle}
         onError={() => setSrc(null)}
       />
     </div>
