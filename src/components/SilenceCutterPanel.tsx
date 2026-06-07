@@ -1,7 +1,24 @@
-import { useState } from 'react'
 import { AudioLines, Loader2, CheckCircle2, AlertCircle, Scissors } from 'lucide-react'
 import { detectSilence, type SilenceSegment } from '../lib/silenceCutter'
 import { recordToolUsage } from '../lib/projectSession'
+
+export type SilencePhase = 'idle' | 'detecting' | 'done' | 'error'
+
+export interface SilenceScanState {
+  phase:    SilencePhase
+  segments: SilenceSegment[]
+  error:    string | null
+  noiseDb:  number
+  minDur:   number
+}
+
+export const SILENCE_SCAN_DEFAULT: SilenceScanState = {
+  phase:    'idle',
+  segments: [],
+  error:    null,
+  noiseDb:  -50,
+  minDur:   1.0,
+}
 
 interface Props {
   file:           File | null
@@ -11,16 +28,15 @@ interface Props {
   removeSilence:  boolean
   onToggle:       (v: boolean) => void
   onSegments:     (segs: SilenceSegment[]) => void
+  scanState:      SilenceScanState
+  onScanState:    (s: SilenceScanState) => void
 }
 
-type Phase = 'idle' | 'detecting' | 'done' | 'error'
-
-export default function SilenceCutterPanel({ file, trimStart, trimEnd, hasAudio, removeSilence, onToggle, onSegments }: Props) {
-  const [phase,    setPhase]    = useState<Phase>('idle')
-  const [segments, setSegments] = useState<SilenceSegment[]>([])
-  const [error,    setError]    = useState<string | null>(null)
-  const [noiseDb,  setNoiseDb]  = useState<number>(-50)
-  const [minDur,   setMinDur]   = useState<number>(1.0)
+export default function SilenceCutterPanel({
+  file, trimStart, trimEnd, hasAudio, removeSilence,
+  onToggle, onSegments, scanState, onScanState,
+}: Props) {
+  const { phase, segments, error, noiseDb, minDur } = scanState
 
   if (!hasAudio && file) {
     return (
@@ -32,17 +48,17 @@ export default function SilenceCutterPanel({ file, trimStart, trimEnd, hasAudio,
 
   async function handleDetect() {
     if (!file) return
-    setPhase('detecting')
-    setError(null)
+    // Capture slider values at click time so the post-await update is consistent.
+    const db  = noiseDb
+    const dur = minDur
+    onScanState({ ...scanState, phase: 'detecting', error: null })
     recordToolUsage('silenceCut').catch(() => {})
     try {
-      const segs = await detectSilence(file, trimStart, trimEnd, noiseDb, minDur)
-      setSegments(segs)
+      const segs = await detectSilence(file, trimStart, trimEnd, db, dur)
+      onScanState({ phase: 'done', segments: segs, error: null, noiseDb: db, minDur: dur })
       onSegments(segs)
-      setPhase('done')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Detection failed.')
-      setPhase('error')
+      onScanState({ phase: 'error', segments: [], error: e instanceof Error ? e.message : 'Detection failed.', noiseDb: db, minDur: dur })
     }
   }
 
@@ -69,7 +85,7 @@ export default function SilenceCutterPanel({ file, trimStart, trimEnd, hasAudio,
             step={5}
             value={noiseDb}
             disabled={phase === 'detecting'}
-            onChange={e => setNoiseDb(parseInt(e.target.value, 10))}
+            onChange={e => onScanState({ ...scanState, noiseDb: parseInt(e.target.value, 10) })}
             className="w-full h-1 rounded outline-none cursor-pointer accent-primary"
             style={{ background: 'var(--border)' }}
           />
@@ -91,7 +107,7 @@ export default function SilenceCutterPanel({ file, trimStart, trimEnd, hasAudio,
             step={0.1}
             value={minDur}
             disabled={phase === 'detecting'}
-            onChange={e => setMinDur(parseFloat(e.target.value))}
+            onChange={e => onScanState({ ...scanState, minDur: parseFloat(e.target.value) })}
             className="w-full h-1 rounded outline-none cursor-pointer accent-primary"
             style={{ background: 'var(--border)' }}
           />

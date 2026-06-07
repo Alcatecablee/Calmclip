@@ -42,6 +42,10 @@ export default function WatermarkPanel({ config, onChange, onProGate }: Props) {
       URL.revokeObjectURL(previewRef.current)
       previewRef.current = null
       setPreview(null)
+    } else if (config?.file && !previewRef.current) {
+      const url = URL.createObjectURL(config.file)
+      previewRef.current = url
+      setPreview(url)
     }
   }, [config])
 

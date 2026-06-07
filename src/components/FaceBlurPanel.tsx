@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
 import { recordToolUsage } from '../lib/projectSession'
 
@@ -11,25 +11,41 @@ export interface BlurRegion {
   note: string
 }
 
+export interface BlurFormState {
+  adding:          boolean
+  label:           string
+  xPct:            string
+  yPct:            string
+  wPct:            string
+  hPct:            string
+  validationError: string | null
+}
+
+export const BLUR_FORM_DEFAULT: BlurFormState = {
+  adding:          false,
+  label:           '',
+  xPct:            '50',
+  yPct:            '20',
+  wPct:            '20',
+  hPct:            '30',
+  validationError: null,
+}
+
 interface Props {
-  regions:   BlurRegion[]
-  onChange:  (regions: BlurRegion[]) => void
-  isDrawing?: boolean
+  regions:       BlurRegion[]
+  onChange:      (regions: BlurRegion[]) => void
+  isDrawing?:    boolean
   onStartDrawing?: () => void
-  onProGate?: () => void
+  onProGate?:    () => void
+  formState:     BlurFormState
+  onFormState:   (s: BlurFormState) => void
 }
 
 let nextId = 1
 
-export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDrawing, onProGate }: Props) {
-  const [adding,          setAdding]          = useState(false)
-  const [label,           setLabel]           = useState('')
-  const [xPct,            setXPct]            = useState('50')
-  const [yPct,            setYPct]            = useState('20')
-  const [wPct,            setWPct]            = useState('20')
-  const [hPct,            setHPct]            = useState('30')
-  const [validationError, setValidationError] = useState<string | null>(null)
-  const inputRef                              = useRef<HTMLInputElement>(null)
+export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDrawing, onProGate, formState, onFormState }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const { adding, label, xPct, yPct, wPct, hPct, validationError } = formState
 
   const enabled = regions.length > 0
 
@@ -39,11 +55,11 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
     const w = parseFloat(wPct)
     const h = parseFloat(hPct)
     if ([x, y, w, h].some(n => isNaN(n) || n < 0 || n > 100)) {
-      setValidationError('All fields must be numbers between 0 and 100.')
+      onFormState({ ...formState, validationError: 'All fields must be numbers between 0 and 100.' })
       return
     }
     if (w <= 0 || h <= 0) {
-      setValidationError('Width and height must be greater than 0.')
+      onFormState({ ...formState, validationError: 'Width and height must be greater than 0.' })
       return
     }
     const cx = Math.min(x, 100)
@@ -51,19 +67,21 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
     const cw = Math.min(w, 100 - cx)
     const ch = Math.min(h, 100 - cy)
     if (cw <= 0 || ch <= 0) {
-      setValidationError('Region falls outside the frame. Reduce X or Y, or increase W or H.')
+      onFormState({ ...formState, validationError: 'Region falls outside the frame. Reduce X or Y, or increase W or H.' })
       return
     }
-    setValidationError(null)
     recordToolUsage('faceBlur').catch(() => {})
     onChange([...regions, { id: nextId++, x: cx, y: cy, w: cw, h: ch, note: label || 'Region' }])
-    setAdding(false)
-    setLabel('')
+    // Keep coords as defaults for the next region; clear label and close form.
+    onFormState({ ...formState, adding: false, label: '', validationError: null })
   }
 
   function remove(id: number) {
     onChange(regions.filter(r => r.id !== id))
   }
+
+  const setField = (key: keyof BlurFormState, value: string) =>
+    onFormState({ ...formState, [key]: value, validationError: null })
 
   return (
     <div className="flex flex-col gap-3">
@@ -108,20 +126,20 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
             ref={inputRef}
             type="text"
             value={label}
-            onChange={e => setLabel(e.target.value)}
+            onChange={e => setField('label', e.target.value)}
             placeholder="Label (e.g. Face 1)"
             className="rounded-lg px-3 py-2 text-xs outline-none"
             style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           />
           <div className="grid grid-cols-2 gap-2">
-            {([['X %', xPct, setXPct], ['Y %', yPct, setYPct], ['W %', wPct, setWPct], ['H %', hPct, setHPct]] as [string, string, (v: string) => void][]).map(([lbl, val, set]) => (
+            {([['X %', xPct, 'xPct'], ['Y %', yPct, 'yPct'], ['W %', wPct, 'wPct'], ['H %', hPct, 'hPct']] as [string, string, keyof BlurFormState][]).map(([lbl, val, key]) => (
               <div key={lbl} className="flex flex-col gap-1">
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{lbl}</span>
                 <input
                   type="number"
                   min={0} max={100}
                   value={val}
-                  onChange={e => set(e.target.value)}
+                  onChange={e => setField(key, e.target.value)}
                   className="rounded-lg px-2 py-1.5 text-xs outline-none"
                   style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 />
@@ -140,7 +158,7 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
               Add blur region
             </button>
             <button
-              onClick={() => { setAdding(false); setValidationError(null) }}
+              onClick={() => onFormState({ ...formState, adding: false, validationError: null })}
               className="py-1.5 px-3 rounded-lg text-xs"
               style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer' }}
             >
@@ -171,7 +189,7 @@ export default function FaceBlurPanel({ regions, onChange, isDrawing, onStartDra
             if (onStartDrawing) {
               onStartDrawing()
             } else {
-              setAdding(true)
+              onFormState({ ...formState, adding: true })
               setTimeout(() => inputRef.current?.focus(), 50)
             }
           }}

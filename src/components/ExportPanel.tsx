@@ -135,6 +135,10 @@ export default function ExportPanel({
         onProgress:     (p) => setProgress(Math.round(p * 100)),
       })
       const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href     = url
+      a.download = `calmclip-export-${Date.now()}.webm`
+      a.click()
       setDownloadUrl(url)
       setPhase('done')
       onExported?.(blob.size)

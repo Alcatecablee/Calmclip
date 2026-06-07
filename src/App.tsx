@@ -14,8 +14,8 @@ import TrimSlider from './components/TrimSlider'
 import LoudnessPanel from './components/LoudnessPanel'
 import MetadataReport from './components/MetadataReport'
 import ScreenRecordButton from './components/ScreenRecordButton'
-import SilenceCutterPanel from './components/SilenceCutterPanel'
-import FaceBlurPanel, { type BlurRegion } from './components/FaceBlurPanel'
+import SilenceCutterPanel, { SILENCE_SCAN_DEFAULT, type SilenceScanState } from './components/SilenceCutterPanel'
+import FaceBlurPanel, { BLUR_FORM_DEFAULT, type BlurFormState, type BlurRegion } from './components/FaceBlurPanel'
 import WatermarkPanel, { type WatermarkConfig } from './components/WatermarkPanel'
 import VideoPreview from './components/VideoPreview'
 import ThumbnailExtractor from './components/ThumbnailExtractor'
@@ -119,7 +119,9 @@ export default function App() {
   const [silenceSourceKey, setSilenceSourceKey] = useState<string | null>(null)
   const [removeSilence,    setRemoveSilence]    = useState(false)
   const [silenceSegsStale, setSilenceSegsStale] = useState(false)
-  const [blurRegions,  setBlurRegions]  = useState<BlurRegion[]>([])
+  const [silenceScanState, setSilenceScanState] = useState<SilenceScanState>(SILENCE_SCAN_DEFAULT)
+  const [blurRegions,   setBlurRegions]   = useState<BlurRegion[]>([])
+  const [blurFormState, setBlurFormState] = useState<BlurFormState>(BLUR_FORM_DEFAULT)
   const [hasAudio, setHasAudio] = useState(true)
   const [watermark, setWatermark] = useState<WatermarkConfig | null>(null)
   const [denoiseAudio,  setDenoiseAudio]  = useState(false)
@@ -216,6 +218,12 @@ export default function App() {
     setSilenceSegsStale(false)
     setSilenceSourceKey(session.fileKey)
     setRemoveSilence(session.removeSilence)
+    setSilenceScanState(prev => ({
+      ...prev,
+      phase:    session.silenceSegs.length > 0 ? 'done' : 'idle',
+      segments: session.silenceSegs,
+      error:    null,
+    }))
     setDenoiseAudio(session.denoiseAudio ?? false)
     setManualCuts(session.manualCuts ?? [])
     if (session.watermark) setWatermark(session.watermark)
@@ -264,7 +272,9 @@ export default function App() {
         setSilenceSegsStale(false)
         setSilenceSourceKey(null)
         setRemoveSilence(false)
+        setSilenceScanState(SILENCE_SCAN_DEFAULT)
         setBlurRegions([])
+        setBlurFormState(BLUR_FORM_DEFAULT)
         setDenoiseAudio(false)
         clearManualCuts()
       }
@@ -390,6 +400,7 @@ export default function App() {
       setSilenceSourceKey(null)
       setRemoveSilence(false)
       setSilenceSegsStale(true)
+      setSilenceScanState(prev => ({ ...prev, phase: 'idle', segments: [], error: null }))
     }
   }, [trimStart])
 
@@ -538,7 +549,9 @@ export default function App() {
     setSilenceSegsStale(false)
     setSilenceSourceKey(null)
     setRemoveSilence(false)
+    setSilenceScanState(SILENCE_SCAN_DEFAULT)
     setBlurRegions([])
+    setBlurFormState(BLUR_FORM_DEFAULT)
     setIsDrawingBlur(false)
     clearManualCuts()
     setVideoToolError(null)
@@ -1483,6 +1496,8 @@ export default function App() {
                             removeSilence={removeSilence}
                             onToggle={setRemoveSilence}
                             onSegments={handleSilenceSegments}
+                            scanState={silenceScanState}
+                            onScanState={setSilenceScanState}
                           />
                           {silenceSegsStale && (
                             <div className="flex items-start gap-1.5 px-2 py-1.5 rounded text-xs" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
@@ -1517,6 +1532,8 @@ export default function App() {
                             isDrawing={isDrawingBlur}
                             onStartDrawing={() => setIsDrawingBlur(true)}
                             onProGate={!proActive ? openProModal : undefined}
+                            formState={blurFormState}
+                            onFormState={setBlurFormState}
                           />
                         </Section>
                       )}
