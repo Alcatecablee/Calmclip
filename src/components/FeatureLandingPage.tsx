@@ -408,6 +408,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
             'Resize to any ratio',
             'Remove silence',
             'Normalize audio',
+            'Denoise audio',
             'Strip metadata',
             'Screen recording',
             'Thumbnail extraction',
