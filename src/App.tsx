@@ -867,11 +867,52 @@ export default function App() {
               </button>
             </div>
 
+            <nav
+              aria-label="Free video tools"
+              style={{
+                width: '100%',
+                maxWidth: 820,
+                marginTop: 32,
+                paddingTop: 24,
+                borderTop: '1px solid var(--border-subtle)',
+              }}
+            >
+              <p style={{
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '0.56px',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+                margin: '0 0 12px 0',
+              }}>
+                Free browser tools
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
+                {[
+                  { href: '/trim-video-online',        label: 'Trim video online'          },
+                  { href: '/add-captions-to-video',    label: 'Add captions to video'      },
+                  { href: '/remove-silence-from-video', label: 'Remove silence from video' },
+                  { href: '/face-blur-video',           label: 'Blur faces in video'       },
+                  { href: '/resize-video-online',       label: 'Resize video online'       },
+                ].map(({ href, label }) => (
+                  <a
+                    key={href}
+                    href={href}
+                    style={{ fontSize: 13, color: 'var(--primary)', textDecoration: 'none' }}
+                    onMouseOver={e => (e.currentTarget.style.textDecoration = 'underline')}
+                    onMouseOut={e => (e.currentTarget.style.textDecoration = 'none')}
+                  >
+                    {label}
+                  </a>
+                ))}
+              </div>
+            </nav>
+
             <a
               href="/privacy.html"
               className="hero-item hero-item-6"
               style={{
-                marginTop: 28,
+                marginTop: 20,
                 fontSize: 12,
                 color: 'var(--text-faint)',
                 textDecoration: 'none',
