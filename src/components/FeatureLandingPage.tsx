@@ -230,34 +230,13 @@ function StepList({ steps }: { steps: Array<{ label: string; desc: string }> }) 
   )
 }
 
+const IMAGE_EXTS = ['gif', 'webp', 'png']
+
 function HeroMedia({ slug }: { slug: string }) {
-  const [src, setSrc]       = useState<string | null>(null)
-  const [isVideo, setIsVideo] = useState(false)
+  const [videoFailed, setVideoFailed] = useState(false)
+  const [imgIndex,    setImgIndex]    = useState(0)
+  const [videoLoaded, setVideoLoaded] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
-
-  useEffect(() => {
-    const candidates = [
-      { ext: 'mp4',  video: true  },
-      { ext: 'gif',  video: false },
-      { ext: 'webp', video: false },
-      { ext: 'png',  video: false },
-    ]
-    let cancelled = false
-
-    async function probe() {
-      for (const { ext, video } of candidates) {
-        const url = `/screenshots/${slug}.${ext}`
-        try {
-          const res = await fetch(url, { method: 'HEAD' })
-          if (res.ok && !cancelled) { setSrc(url); setIsVideo(video); return }
-        } catch { /* not found */ }
-      }
-    }
-    probe()
-    return () => { cancelled = true }
-  }, [slug])
-
-  if (!src) return null
 
   const wrapStyle: React.CSSProperties = {
     width:        '100%',
@@ -278,31 +257,36 @@ function HeroMedia({ slug }: { slug: string }) {
     objectPosition: 'top',
   }
 
-  if (isVideo) {
+  if (!videoFailed) {
     return (
       <div style={wrapStyle}>
         <video
-          src={src}
+          key={slug}
+          src={`/screenshots/${slug}.mp4`}
           autoPlay
           loop
           muted
           playsInline
-          style={mediaStyle}
-          onError={() => setSrc(null)}
+          style={{ ...mediaStyle, opacity: videoLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+          onCanPlay={() => setVideoLoaded(true)}
+          onError={() => setVideoFailed(true)}
         />
       </div>
     )
   }
 
+  if (imgIndex >= IMAGE_EXTS.length) return null
+
   return (
     <div style={wrapStyle}>
       <img
         ref={imgRef}
-        src={src}
+        key={`${slug}-${imgIndex}`}
+        src={`/screenshots/${slug}.${IMAGE_EXTS[imgIndex]}`}
         alt=""
         loading="lazy"
         style={mediaStyle}
-        onError={() => setSrc(null)}
+        onError={() => setImgIndex(i => i + 1)}
       />
     </div>
   )
