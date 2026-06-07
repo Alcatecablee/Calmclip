@@ -263,6 +263,7 @@ function HeroMedia({ slug }: { slug: string }) {
         <video
           key={slug}
           src={`/screenshots/${slug}.mp4`}
+          poster={`/screenshots/${slug}-poster.jpg`}
           autoPlay
           loop
           muted
@@ -351,7 +352,9 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <HeroMedia slug={config.slug} />
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 28 }}>
           <button
             onClick={config.isPro ? onUpgrade : onOpenVideo}
             className="navbar-upgrade-btn"
@@ -377,8 +380,6 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
             </button>
           )}
         </div>
-
-        <HeroMedia slug={config.slug} />
       </div>
 
       {/* How it works */}
