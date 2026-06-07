@@ -17,6 +17,7 @@ export interface FaqItem {
 export interface FeaturePageConfig {
   slug:              string
   shortLabel:        string
+  mediaAlt:          string
   title:             string
   metaDesc:          string
   headline:          string
@@ -37,6 +38,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'trim-video-online',
     shortLabel:  'Trim video',
+    mediaAlt:    'CalmClip trim panel showing timeline handles being dragged to cut a video clip',
     title:       'Trim Video Online Free | No Upload | CalmClip',
     metaDesc:    'The fastest way to trim, cut, and split video files online. CalmClip runs entirely in your browser. No uploads, no waiting, no watermark. Free forever.',
     headline:    'Trim video online, free',
@@ -79,6 +81,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'add-captions-to-video',
     shortLabel:  'Add captions',
+    mediaAlt:    'CalmClip captions panel showing AI-generated subtitles appearing word by word on a video',
     title:       'Add Captions to Video Free | Local AI Transcription | CalmClip',
     metaDesc:    'Generate highly accurate subtitles and add captions to video automatically using local AI. Whisper runs natively in your browser. Zero uploads.',
     headline:    'Add captions to video automatically',
@@ -121,6 +124,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'remove-silence-from-video',
     shortLabel:  'Remove silence',
+    mediaAlt:    'CalmClip silence removal panel showing waveform gaps highlighted and collapsed from a recording',
     title:       'Remove Silence and Dead Air from Video | CalmClip',
     metaDesc:    'Automatically remove silence, pauses, and dead air from podcasts, lectures, and interviews. Browser-based, incredibly fast, and free.',
     headline:    'Remove silence from video automatically',
@@ -163,6 +167,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'face-blur-video',
     shortLabel:  'Blur faces',
+    mediaAlt:    'CalmClip blur panel showing a face automatically detected and blurred in a video frame',
     title:       'Blur Faces in Video Online | Privacy Safe | CalmClip',
     metaDesc:    'Automatically detect and blur faces in videos online. Because CalmClip runs 100% locally in your browser, your unedited video never touches a server.',
     headline:    'Blur faces in video, completely privately',
@@ -205,6 +210,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'resize-video-online',
     shortLabel:  'Resize video',
+    mediaAlt:    'CalmClip resize panel showing aspect ratio being changed on a video canvas',
     title:       'Resize Video for Instagram, TikTok, YouTube | CalmClip',
     metaDesc:    'Crop, fit, and resize videos to 9:16, 1:1, or 4:5 aspect ratios instantly in your browser. Free online video resizer with no watermark.',
     headline:    'Resize video for any platform',
@@ -247,6 +253,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'normalize-video-audio',
     shortLabel:  'Normalize audio',
+    mediaAlt:    'CalmClip audio panel showing loudness levels being normalized across a video clip',
     title:       'Normalize Video Audio Free | Loudness Tool | CalmClip',
     metaDesc:    'Automatically normalize audio loudness in your video to -14 LUFS, -16 LUFS, or a custom target. Browser-based, free, no upload required.',
     headline:    'Normalize video audio for free',
@@ -289,6 +296,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'remove-video-metadata',
     shortLabel:  'Strip metadata',
+    mediaAlt:    'CalmClip privacy panel showing embedded metadata fields being stripped from a video file',
     title:       'Remove Video Metadata | Strip GPS and Device Info | CalmClip',
     metaDesc:    'Strip GPS coordinates, device model, and recording timestamps from video files before sharing. Free, browser-based, no upload required.',
     headline:    'Strip metadata from video before sharing',
@@ -331,6 +339,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'record-screen-online',
     shortLabel:  'Screen recording',
+    mediaAlt:    'CalmClip screen recording panel showing a capture area being selected and recording starting',
     title:       'Record Your Screen Free | No Install | CalmClip',
     metaDesc:    'Record any browser tab or full screen directly in CalmClip. No install, no extension, no cloud storage. Your recording goes straight into the editor.',
     headline:    'Record your screen for free, no install',
@@ -373,6 +382,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'add-watermark-to-video',
     shortLabel:  'Add watermark',
+    mediaAlt:    'CalmClip brand panel showing a watermark image being dragged to position on a video frame',
     title:       'Add a Watermark to Video Free | No Upload | CalmClip',
     metaDesc:    'Overlay your logo or brand image onto video before export. CalmClip burns watermarks in locally using FFmpeg. No upload, no cloud render farm.',
     headline:    'Add a watermark to video',
@@ -415,6 +425,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'batch-export-video',
     shortLabel:  'Batch export',
+    mediaAlt:    'CalmClip batch export panel showing multiple video clips queued and processing locally',
     title:       'Batch Export Video to All Ratios | TikTok, Instagram, YouTube | CalmClip',
     metaDesc:    'Export your video to 16:9, 9:16, 1:1, and 4:5 in one click. CalmClip batch exports all formats locally in your browser. Pro feature, no upload.',
     headline:    'Export video to every ratio in one click',
@@ -457,6 +468,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'ai-video-transcription',
     shortLabel:  'AI transcription',
+    mediaAlt:    'CalmClip transcription panel showing AI-generated transcript text appearing alongside video playback',
     title:       'AI Video Transcription | Local Whisper, No Upload | CalmClip',
     metaDesc:    'Transcribe video audio using the Whisper model running locally in your browser. No cloud API, no upload. Accurate speech-to-text, fully private.',
     headline:    'Transcribe video with local AI',
@@ -499,6 +511,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'remove-filler-words',
     shortLabel:  'Remove filler words',
+    mediaAlt:    'CalmClip captions panel showing filler words like um and uh highlighted and removed from a transcript',
     title:       'Remove Filler Words from Video | Auto-detect Um and Uh | CalmClip',
     metaDesc:    'Automatically find and remove filler words like um, uh, like, and you know from video. Transcription-powered, browser-based, Pro feature.',
     headline:    'Remove filler words from video automatically',
@@ -541,6 +554,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'extract-video-thumbnail',
     shortLabel:  'Extract thumbnail',
+    mediaAlt:    'CalmClip frame panel showing a video frame being selected and saved as a thumbnail image',
     title:       'Extract Thumbnail from Video | Frame Capture | CalmClip',
     metaDesc:    'Grab any frame from your video as a full-resolution JPG. Scrub to the exact moment you want and download it in one click. Free, no upload.',
     headline:    'Extract a thumbnail from your video',
@@ -583,6 +597,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'denoise-audio-online',
     shortLabel:  'Denoise audio',
+    mediaAlt:    'CalmClip audio panel showing background noise being reduced from a video waveform',
     title:       'Remove Background Noise from Video | Audio Denoiser | CalmClip',
     metaDesc:    'Strip background hum, fan noise, and room echo from your video audio in one export pass. Browser-based, free, no upload required. Combine with loudness normalization.',
     headline:    'Remove background noise from video',
@@ -625,6 +640,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'generate-video-chapters',
     shortLabel:  'Generate chapters',
+    mediaAlt:    'CalmClip chapters panel showing chapter markers being added automatically to a video timeline',
     title:       'Generate YouTube Chapters Automatically | AI Chapter Generator | CalmClip',
     metaDesc:    'Auto-generate YouTube chapter timestamps and titles from your video transcript. Local Whisper AI finds the topic breaks. No upload. Pro feature.',
     headline:    'Generate video chapters automatically',
@@ -667,6 +683,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'video-editor-no-upload',
     shortLabel:  'No-upload editor',
+    mediaAlt:    'CalmClip editor interface showing a video loaded and ready to edit with no upload required',
     title:       'Online Video Editor with No Upload | 100% Local Processing | CalmClip',
     metaDesc:    'Edit video online without uploading to any server. CalmClip runs FFmpeg and Whisper entirely in your browser. Trim, caption, resize, and export locally. Free.',
     headline:    'Edit video online without uploading anything',
@@ -709,6 +726,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'crop-video-for-tiktok',
     shortLabel:  'Crop for TikTok',
+    mediaAlt:    'CalmClip resize panel showing a video being cropped to 9:16 vertical format for TikTok',
     title:       'Crop Video to 9:16 for TikTok | Free, No Upload | CalmClip',
     metaDesc:    'Convert landscape or square video to 9:16 vertical format for TikTok. Free browser tool, no upload, no watermark. Drag the crop to frame your subject.',
     headline:    'Crop video to 9:16 for TikTok',
@@ -751,6 +769,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'crop-video-for-instagram',
     shortLabel:  'Crop for Instagram',
+    mediaAlt:    'CalmClip resize panel showing a video being cropped to square or 4:5 format for Instagram',
     title:       'Crop Video for Instagram Reels, Feed, and Stories | CalmClip',
     metaDesc:    'Resize video to 9:16 for Reels, 1:1 for the Instagram feed, or 4:5 for portrait posts. Free browser tool, no upload, no watermark.',
     headline:    'Crop video for every Instagram format',
@@ -793,6 +812,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'crop-video-for-youtube-shorts',
     shortLabel:  'Crop for Shorts',
+    mediaAlt:    'CalmClip resize panel showing a video being cropped to vertical 9:16 format for YouTube Shorts',
     title:       'Crop Video for YouTube Shorts | 9:16 Format | CalmClip',
     metaDesc:    'Convert your landscape YouTube video to 9:16 for YouTube Shorts. Free browser tool, no upload, no watermark. Trim to under 3 minutes in the same session.',
     headline:    'Crop video for YouTube Shorts',
@@ -835,6 +855,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'video-editor-for-lawyers',
     shortLabel:  'For legal teams',
+    mediaAlt:    'CalmClip editor showing face blur and metadata strip applied to legal deposition footage',
     title:       'Privacy-Safe Video Editor for Lawyers and Legal Teams | CalmClip',
     metaDesc:    'Edit deposition recordings, court footage, and privileged video locally in your browser. CalmClip never uploads your footage to a server. Face blur, transcription, trim.',
     headline:    'Video editor built for legal teams',
@@ -877,6 +898,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
   {
     slug:        'video-editor-for-journalists',
     shortLabel:  'For journalists',
+    mediaAlt:    'CalmClip editor showing captions and silence removal applied to a recorded interview',
     title:       'Private Video Editor for Journalists | No Upload | CalmClip',
     metaDesc:    'Edit source footage, field recordings, and interview video without uploading to a cloud service. Face blur, metadata stripping, local transcription. Free.',
     headline:    'Video editor for journalists and investigators',

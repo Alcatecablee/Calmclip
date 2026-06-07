@@ -232,7 +232,7 @@ function StepList({ steps }: { steps: Array<{ label: string; desc: string }> }) 
 
 const IMAGE_EXTS = ['gif', 'webp', 'png']
 
-function HeroMedia({ slug }: { slug: string }) {
+function HeroMedia({ slug, alt }: { slug: string; alt: string }) {
   const [videoFailed, setVideoFailed] = useState(false)
   const [imgIndex,    setImgIndex]    = useState(0)
   const [videoLoaded, setVideoLoaded] = useState(false)
@@ -284,7 +284,7 @@ function HeroMedia({ slug }: { slug: string }) {
         ref={imgRef}
         key={`${slug}-${imgIndex}`}
         src={`/screenshots/${slug}.${IMAGE_EXTS[imgIndex]}`}
-        alt=""
+        alt={alt}
         loading="lazy"
         style={mediaStyle}
         onError={() => setImgIndex(i => i + 1)}
@@ -352,7 +352,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
           ))}
         </div>
 
-        <HeroMedia slug={config.slug} />
+        <HeroMedia slug={config.slug} alt={config.mediaAlt} />
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 28 }}>
           <button
