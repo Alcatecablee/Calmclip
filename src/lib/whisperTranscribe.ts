@@ -161,7 +161,7 @@ export function transcribeToTimedWords(
         type: 'transcribe',
         audio,
         durationSec: videoDurationSeconds,
-        model: model ?? 'Xenova/whisper-base',
+        model: model ?? 'Xenova/whisper-tiny',
         ...(language ? { language } : {}),
       }, [audio.buffer])
     })

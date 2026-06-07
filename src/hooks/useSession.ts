@@ -60,7 +60,7 @@ export function useSession({ file, step, saveSnapshot, onApplySession }: UseSess
   }, [])
 
   const handleLoadSession = useCallback((session: SessionData) => {
-    if (file && `${file.name}__${file.size}` === session.fileKey) {
+    if (file && `${file.name}__${file.size}__${file.lastModified}` === session.fileKey) {
       onApplyRef.current(session)
       setShowSessionsModal(false)
       setPendingLoadSession(null)

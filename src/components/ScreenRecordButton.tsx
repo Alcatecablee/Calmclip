@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Monitor, Square, AlertCircle } from 'lucide-react'
 import { startScreenRecording, isScreenRecordSupported } from '../lib/screenRecord'
 import { loadFfmpeg } from '../lib/ffmpeg'
 
 interface Props {
-  onFile: (file: File) => void
+  onFile:         (file: File) => void
+  autoStart?:     boolean
+  onAutoStarted?: () => void
 }
 
-export default function ScreenRecordButton({ onFile }: Props) {
+export default function ScreenRecordButton({ onFile, autoStart, onAutoStarted }: Props) {
   const [recording, setRecording] = useState(false)
   const [error,     setError]     = useState<string | null>(null)
 
@@ -28,6 +30,14 @@ export default function ScreenRecordButton({ onFile }: Props) {
       setRecording(false)
     }
   }
+
+  useEffect(() => {
+    if (autoStart && !recording) {
+      handleClick()
+      onAutoStarted?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart])
 
   return (
     <div className="flex flex-col items-center gap-3">

@@ -31,10 +31,10 @@ export default function InstallPrompt({ onInstall, onDismiss }: Props) {
 
       <div style={{ minWidth: 0 }}>
         <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px' }}>
-          Install CalmClip
+          Right-click. Edit. Export.
         </p>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          Works offline. Opens video files directly.
+          CalmClip lives in your browser.
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default function InstallPrompt({ onInstall, onDismiss }: Props) {
         }}
       >
         <Download size={13} />
-        Install
+        Add to Desktop
       </button>
 
       <button

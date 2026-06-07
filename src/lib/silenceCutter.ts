@@ -1,4 +1,4 @@
-import { loadFfmpeg, fetchFile } from './ffmpeg'
+import { loadFfmpeg, fetchFile, acquireFfmpegLock, releaseFfmpegLock, runFfmpegWithWatchdog } from './ffmpeg'
 
 export interface SilenceSegment {
   start: number
@@ -12,49 +12,49 @@ export async function detectSilence(
   noiseDb:   number = -50,
   minDur:    number = 1.0,
 ): Promise<SilenceSegment[]> {
-  const ff = await loadFfmpeg()
-
-  const segments: SilenceSegment[] = []
-  let currentStart: number | null  = null
-
-  const logLines: string[] = []
-  const logHandler = ({ message }: { message: string }) => {
-    logLines.push(message)
-    const startMatch = /silence_start: ([\d.]+)/.exec(message)
-    const endMatch   = /silence_end: ([\d.]+)/.exec(message)
-    if (startMatch) currentStart = parseFloat(startMatch[1])
-    if (endMatch && currentStart !== null) {
-      segments.push({ start: currentStart, end: parseFloat(endMatch[1]) })
-      currentStart = null
-    }
-  }
-
-  ff.on('log', logHandler)
-
+  acquireFfmpegLock()
   try {
-    await ff.writeFile('sil_input.mp4', await fetchFile(file))
+    const ff = await loadFfmpeg()
 
-    const code = await ff.exec([
-      '-ss',  String(trimStart),
-      '-t',   String(trimEnd - trimStart),
-      '-i',   'sil_input.mp4',
-      '-vn',
-      '-af',  `silencedetect=noise=${noiseDb}dB:d=${minDur}`,
-      '-f',   'null',
-      '-',
-    ])
+    const segments: SilenceSegment[] = []
+    let currentStart: number | null  = null
 
-    if (code !== 0) {
-      const tail = logLines.slice(-10).join('\n').trim()
-      throw new Error(
-        `Silence detection failed (exit code ${code}). The file may have no audio track, an unsupported codec, or be corrupted.` +
-        (tail ? `\n\n${tail}` : '')
-      )
+    const logHandler = ({ message }: { message: string }) => {
+      const startMatch = /silence_start: ([\d.]+)/.exec(message)
+      const endMatch   = /silence_end: ([\d.]+)/.exec(message)
+      if (startMatch) currentStart = parseFloat(startMatch[1])
+      if (endMatch && currentStart !== null) {
+        segments.push({ start: currentStart, end: parseFloat(endMatch[1]) })
+        currentStart = null
+      }
     }
-  } finally {
-    ff.off('log', logHandler)
-    try { await ff.deleteFile('sil_input.mp4') } catch { /* ignore */ }
-  }
 
-  return segments
+    ff.on('log', logHandler)
+
+    try {
+      await ff.writeFile('sil_input.mp4', await fetchFile(file))
+
+      try {
+        await runFfmpegWithWatchdog(ff, [
+          '-ss',  String(trimStart),
+          '-t',   String(trimEnd - trimStart),
+          '-i',   'sil_input.mp4',
+          '-vn',
+          '-af',  `silencedetect=noise=${noiseDb}dB:d=${minDur}`,
+          '-f',   'null',
+          '-',
+        ])
+      } catch (err) {
+        throw new Error(`Silence detection failed. The file may have no audio track or an unsupported codec. (${err instanceof Error ? err.message : String(err)})`)
+      }
+    } finally {
+      ff.off('log', logHandler)
+      // Fire-and-forget cleanup: do not await, to avoid MT teardown hangs
+      ff.deleteFile('sil_input.mp4').catch(() => {})
+    }
+
+    return segments
+  } finally {
+    releaseFfmpegLock()
+  }
 }

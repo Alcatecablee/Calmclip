@@ -6,7 +6,7 @@ import {
   Sparkles, Check, Keyboard, FolderOpen,
   Clipboard, MonitorPlay, Captions, Download,
 } from 'lucide-react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, AlertCircle, X } from 'lucide-react'
 import DropZone, { type DropZoneHandle } from './components/DropZone'
 import ProUnlockModal from './components/ProUnlockModal'
 import { isPro as checkIsPro, getProStatus, initPro } from './lib/pro'
@@ -24,6 +24,7 @@ import Tooltip from './components/Tooltip'
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal'
 import InstallPrompt from './components/InstallPrompt'
 import UpdateBanner from './components/UpdateBanner'
+import PostInstallTip from './components/PostInstallTip'
 import { usePWA } from './hooks/usePWA'
 import { useTrim } from './hooks/useTrim'
 import { useManualCuts } from './hooks/useManualCuts'
@@ -159,7 +160,7 @@ export default function App() {
   // feature-detect it at runtime without a type error on environments where it is defined.
   const hasClipboard = 'clipboard' in navigator && typeof (navigator.clipboard as unknown as Record<string, unknown>).write === 'function'
 
-  const { installState, updateState, triggerInstall, dismissInstall, applyUpdate, launchFile, clearLaunchFile } = usePWA()
+  const { installState, updateState, triggerInstall, dismissInstall, applyUpdate, launchFile, clearLaunchFile, extensionError, clearExtensionError, extensionLoading, startRecording, clearStartRecording } = usePWA()
 
   // --- useSession ---
   // applySessionData calls setSessionBanner (from useSession), so we use a ref
@@ -287,8 +288,18 @@ export default function App() {
   }, [applySessionData, clearManualCuts, setStep, setShowSessionsModal, setPendingLoadSession, setTrimStart, setTrimEnd])
 
   // File Handling API: a file was opened from the OS into the installed PWA.
+  // If the user is already editing, confirm before discarding their work.
   useEffect(() => {
     if (!launchFile) return
+    if (file && step === 'edit') {
+      const ok = window.confirm(
+        'You are currently editing a video. Open a new file and discard your current work?',
+      )
+      if (!ok) {
+        clearLaunchFile()
+        return
+      }
+    }
     handleFile(launchFile)
     clearLaunchFile()
   // handleFile is stable (useCallback with no deps that change identity)
@@ -630,7 +641,7 @@ export default function App() {
               <span className="navbar-badge-sep" aria-hidden="true">·</span>
               {isTrimmed ? (
                 <span className="navbar-file-dur navbar-file-trim-active">
-                  {fmtTime(trimStart)}<span className="navbar-file-trim-arrow"> – </span>{fmtTime(trimEnd)}
+                  {fmtTime(trimStart)}<span className="navbar-file-trim-arrow"> - </span>{fmtTime(trimEnd)}
                 </span>
               ) : duration > 0 ? (
                 <span className="navbar-file-dur">{fmtTime(duration)}</span>
@@ -783,7 +794,7 @@ export default function App() {
 
             <div className="action-area hero-item hero-item-4">
               <DropZone ref={dropZoneRef} onFile={handleFile} />
-              <ScreenRecordButton onFile={handleFile} />
+              <ScreenRecordButton onFile={handleFile} autoStart={startRecording} onAutoStarted={clearStartRecording} />
             </div>
 
             <div id="how-it-works" className="section-reveal"><LandingHowItWorks /></div>
@@ -1598,8 +1609,32 @@ Selected: ${f.name} (${formatBytes(f.size)})`)
         <UpdateBanner onUpdate={applyUpdate} />
       )}
 
+      {extensionError && (
+        <div className="card" style={{
+          position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 60, padding: '16px', maxWidth: '400px', width: 'calc(100vw - 32px)',
+          display: 'flex', gap: '12px', alignItems: 'flex-start',
+          borderLeft: '4px solid var(--danger)'
+        }}>
+          <AlertCircle size={20} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: '0 0 6px 0', fontWeight: 600, fontSize: '0.9rem' }}>Extension Fetch Failed</p>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{extensionError}</p>
+          </div>
+          <button onClick={clearExtensionError} style={{
+            background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, flexShrink: 0
+          }}>
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       {installState === 'available' && (
         <InstallPrompt onInstall={triggerInstall} onDismiss={dismissInstall} />
+      )}
+
+      {installState === 'installed' && (
+        <PostInstallTip />
       )}
 
       {showShortcutsModal && (
@@ -1628,6 +1663,22 @@ Selected: ${f.name} (${formatBytes(f.size)})`)
               {step === 'drop' ? 'Drop your file' : 'Drop to replace file'}
             </p>
             <p className="drag-overlay-sub">MP4, MOV, WebM, MKV, MP3, WAV, M4A and more</p>
+          </div>
+        </div>
+      )}
+
+      {extensionLoading && (
+        <div className="drag-overlay" style={{ zIndex: 100 }}>
+          <div className="drag-overlay-card" style={{ gap: '16px' }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: '50%', border: '3px solid var(--primary-a12)',
+              borderTopColor: 'var(--primary)', animation: 'spin 1s linear infinite'
+            }} />
+            <div style={{ textAlign: 'center' }}>
+              <p className="drag-overlay-title">Fetching Media</p>
+              <p className="drag-overlay-sub">Downloading video from extension...</p>
+            </div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         </div>
       )}

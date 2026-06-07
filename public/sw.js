@@ -10,7 +10,7 @@ const PRECACHE   = 'calmclip-pre-v4'
 const RUNTIME    = 'calmclip-run-v4'
 const CDN_CACHE  = 'calmclip-cdn-v4'
 // Injected by scripts/update-sitemap.mjs on every production build.
-const SITEMAP_LASTMOD = '2026-06-06'
+const SITEMAP_LASTMOD = '2026-06-07'
 const SHARE_CACHE = 'calmclip-share'
 const ALL_CACHES = [PRECACHE, RUNTIME, CDN_CACHE]
 // SHARE_CACHE is intentionally not in ALL_CACHES: its entries are short-lived
@@ -141,9 +141,9 @@ async function handleShareTarget(req) {
   try {
     const data  = await req.formData()
     const entry = data.get('video')
-    if (entry instanceof File && entry.type.startsWith('video/')) {
+    if (entry instanceof File && (entry.type.startsWith('video/') || entry.type.startsWith('audio/'))) {
       const cache = await caches.open(SHARE_CACHE)
-      const resp  = new Response(await entry.arrayBuffer(), {
+      const resp  = new Response(entry, {
         headers: {
           'Content-Type': entry.type,
           'X-File-Name':  entry.name,

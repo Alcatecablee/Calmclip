@@ -55,7 +55,7 @@ const TRANSCRIBE_TIPS = [
 export default function WhisperPanel({ file, trimStart, trimEnd, hasAudio, onResult, onCaption }: Props) {
   const [status, setStatus]       = useState<WhisperStatus>({ phase: 'idle' })
   const [elapsed, setElapsed]     = useState(0)
-  const [modelId, setModelId]     = useState<WhisperModelId>('Xenova/whisper-base')
+  const [modelId, setModelId]     = useState<WhisperModelId>('Xenova/whisper-tiny')
   const [language, setLanguage]       = useState<string>(loadLangPref)
   const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
   const workerRef                     = useRef<ReturnType<typeof createWhisperWorker> | null>(null)

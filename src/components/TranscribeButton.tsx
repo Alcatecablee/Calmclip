@@ -76,7 +76,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
   const [, setStatus]               = useState('')
   const [overallPct, setOverallPct] = useState(0)
   const [error, setError]           = useState<string | null>(null)
-  const [modelId, setModelId]       = useState<WhisperModelId>('Xenova/whisper-base')
+  const [modelId, setModelId]       = useState<WhisperModelId>('Xenova/whisper-tiny')
   const [language, setLanguage]     = useState<string>(loadLangPref)
   const [warmingStatus, setWarmingStatus] = useState<WarmingStatus | null>(getWarmingStatus)
   const [pillDismissed, setPillDismissed] = useState(false)

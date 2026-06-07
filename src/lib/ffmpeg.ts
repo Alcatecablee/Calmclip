@@ -19,9 +19,9 @@ let _mtFailed        = false  // set true if MT core loading fails or times out;
 // fires abort() after the main thread exits, killing the worker. loadFfmpeg()
 // checks this flag and discards the dead instance before returning a new one.
 let _workerAborted   = false
-// Guards against concurrent exportVideo calls. The FFmpeg WASM singleton is not
+// Guards against concurrent FFmpeg operations. The FFmpeg WASM singleton is not
 // re-entrant: two simultaneous ff.exec() calls deadlock the worker thread.
-let _exportRunning   = false
+let _ffWorkerBusy    = false
 
 // Minimum stale-activity timeout regardless of clip length.
 const EXEC_STALE_FLOOR_MS = 3 * 60 * 1000
@@ -58,7 +58,7 @@ function calcStaleMs(durationSec: number): number {
 // after exec) so hangs are diagnosable without waiting for exec to return.
 const PROGRESS_STALE_MS = 2 * 60_000 // 2 min: logged-but-no-output timeout
 
-async function execOrThrow(
+export async function runFfmpegWithWatchdog(
   ff: FFmpeg,
   args: string[],
   staleMs = EXEC_STALE_FLOOR_MS,
@@ -285,11 +285,24 @@ export function isFFLoaded(): boolean {
   return _loaded
 }
 
-// Returns true if an export exec() is currently in progress.
-// Audio extraction must not call ff.exec() concurrently with an export: the
+// Returns true if an exec() is currently in progress.
+// Other features must not call ff.exec() concurrently with an export: the
 // WASM singleton is not re-entrant and two simultaneous exec() calls deadlock.
 export function isFFmpegBusy(): boolean {
-  return _exportRunning
+  return _ffWorkerBusy
+}
+
+// Acquire the lock before starting an FFmpeg task. Throws if busy.
+export function acquireFfmpegLock(): void {
+  if (_ffWorkerBusy) {
+    throw new Error('A video processing task is in progress. Please wait for it to finish first.')
+  }
+  _ffWorkerBusy = true
+}
+
+// Release the FFmpeg task lock.
+export function releaseFfmpegLock(): void {
+  _ffWorkerBusy = false
 }
 
 // Terminates the FFmpeg worker and clears the singleton cache.
@@ -303,7 +316,7 @@ export function resetFfmpeg(): void {
   _loaded         = false
   _loadingPromise = null
   _workerAborted  = false
-  _exportRunning  = false
+  _ffWorkerBusy   = false
 }
 
 export { fetchFile }
@@ -577,7 +590,7 @@ async function exportVideoStreamCopy(ff: FFmpeg, opts: ExportOptions): Promise<U
     // valid and platforms re-process the container on upload.
     args.push('-avoid_negative_ts', 'make_zero', '-y', outputName)
 
-    await execOrThrow(ff, args, calcStaleMs(duration))
+    await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration))
     // FFmpeg stops emitting progress events during the final muxing/container-write
     // phase. Push to 99 % immediately after exec so the bar advances even if the
     // last reported value was lower (e.g. 45 %).
@@ -600,14 +613,11 @@ async function exportVideoStreamCopy(ff: FFmpeg, opts: ExportOptions): Promise<U
 }
 
 export async function exportVideo(opts: ExportOptions): Promise<Uint8Array> {
-  if (_exportRunning) {
-    throw new Error('An export is already running. Please wait for it to finish or cancel it first.')
-  }
-  _exportRunning = true
+  acquireFfmpegLock()
   try {
     return await _exportVideoInner(opts)
   } finally {
-    _exportRunning = false
+    releaseFfmpegLock()
   }
 }
 
@@ -764,7 +774,7 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
       if (stripMetadata) args.push('-map_metadata', '-1')
       args.push('-y', outputName)
       validateFilterExpr(scaleFilter, '-vf')
-      await execOrThrow(ff, args, calcStaleMs(duration), signalStarted)
+      await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration), signalStarted)
     } else {
       const parts: string[] = []
       parts.push(`[0:v]${scaleFilter}[vsc]`)
@@ -815,7 +825,7 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
       if (stripMetadata) args.push('-map_metadata', '-1')
       args.push('-y', outputName)
       console.log('[CalmClip] exportVideo: calling execOrThrow (filter_complex path)')
-      await execOrThrow(ff, args, calcStaleMs(duration), signalStarted)
+      await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration), signalStarted)
       console.log('[CalmClip] exportVideo: execOrThrow returned')
     }
     console.log('[CalmClip] exportVideo: calling onProgress(99)')
@@ -931,7 +941,7 @@ async function exportWithCuts(p: CutsExportParams): Promise<Uint8Array> {
     args.push('-y', outputName)
 
     console.log('[CalmClip] exportWithCuts: calling execOrThrow')
-    await execOrThrow(ff, args, calcStaleMs(outDuration))
+    await runFfmpegWithWatchdog(ff, args, calcStaleMs(outDuration))
     console.log('[CalmClip] exportWithCuts: execOrThrow returned, calling ff.readFile')
     const result = (await ff.readFile(outputName)) as Uint8Array
     console.log('[CalmClip] exportWithCuts: ff.readFile returned, byteLength:', result?.byteLength)

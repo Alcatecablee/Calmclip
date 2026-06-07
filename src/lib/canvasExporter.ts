@@ -202,7 +202,7 @@ export async function exportVideoWithCaptions({
       if (audioCtx) {
         try { audioSource?.disconnect(); audioCtx.close() } catch (_) {}
       }
-      resolve(new Blob(chunks, { type: 'video/webm' }))
+      resolve(new Blob(chunks, { type: mimeType }))
     }
 
     recorder.onerror = (e) => reject(new Error(

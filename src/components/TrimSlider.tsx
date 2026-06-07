@@ -100,12 +100,11 @@ export default function TrimSlider({
     let cancelled = false
     ;(async () => {
       try {
+        if (file.size > MAX_AUDIO_BYTES) return
         const url = URL.createObjectURL(file)
         let buf: ArrayBuffer
         try {
           const res  = await fetch(url)
-          const size = parseInt(res.headers.get('content-length') ?? '0', 10)
-          if (size > MAX_AUDIO_BYTES) return
           buf = await Promise.race([
             res.arrayBuffer(),
             new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), DECODE_TIMEOUT)),

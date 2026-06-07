@@ -1,4 +1,4 @@
-import { loadFfmpeg, fetchFile } from './ffmpeg'
+import { loadFfmpeg, fetchFile, acquireFfmpegLock, releaseFfmpegLock, runFfmpegWithWatchdog } from './ffmpeg'
 import { writeModelSentinel } from './projectSession'
 
 export interface TranscriptChunk {
@@ -51,61 +51,67 @@ export async function extractAudioForWhisper(
 ): Promise<Float32Array> {
   const TARGET_SR = 16000
 
-  const ff = await loadFfmpeg()
-  const inputName = 'temp_whisper_input.mp4'
-  const outputName = 'temp_whisper_output.wav'
-
+  acquireFfmpegLock()
   try {
-    await ff.writeFile(inputName, await fetchFile(file))
-
-    const duration = trimEnd - trimStart
-    const ret = await ff.exec([
-      '-ss', String(trimStart),
-      '-t', String(duration),
-      '-i', inputName,
-      '-vn',
-      '-acodec', 'pcm_s16le',
-      '-ar', String(TARGET_SR),
-      '-ac', '1',
-      outputName
-    ])
-    if (ret !== 0) {
-      throw new Error(`Failed to extract audio for transcription (FFmpeg code ${ret}). Ensure the file has a valid audio track.`)
-    }
-
-    const data = (await ff.readFile(outputName)) as Uint8Array
-
-    const wavBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
-
-    const ctx = new AudioContext({ sampleRate: TARGET_SR })
-    let decoded: AudioBuffer
-    try {
-      decoded = await ctx.decodeAudioData(wavBuffer)
-    } catch {
-      await ctx.close()
-      throw new Error('Could not decode extracted audio. Ensure the file contains a valid audio track.')
-    }
+    const ff = await loadFfmpeg()
+    const inputName = 'temp_whisper_input.mp4'
+    const outputName = 'temp_whisper_output.wav'
 
     try {
-      const raw = decoded.getChannelData(0)
-      let peak = 0
-      for (let i = 0; i < raw.length; i++) {
-        const abs = Math.abs(raw[i])
-        if (abs > peak) peak = abs
+      await ff.writeFile(inputName, await fetchFile(file))
+
+      const duration = trimEnd - trimStart
+      try {
+        await runFfmpegWithWatchdog(ff, [
+          '-ss', String(trimStart),
+          '-t', String(duration),
+          '-i', inputName,
+          '-vn',
+          '-acodec', 'pcm_s16le',
+          '-ar', String(TARGET_SR),
+          '-ac', '1',
+          outputName
+        ], 120_000)
+      } catch (err) {
+        throw new Error(`Failed to extract audio for transcription. Ensure the file has a valid audio track. (${err instanceof Error ? err.message : String(err)})`)
       }
-      if (peak > 0.02 && peak < 0.9) {
-        const gain = 0.9 / peak
-        const normalised = new Float32Array(raw.length)
-        for (let i = 0; i < raw.length; i++) normalised[i] = raw[i] * gain
-        return normalised
+
+      const data = (await ff.readFile(outputName)) as Uint8Array
+
+      const wavBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
+
+      const ctx = new AudioContext({ sampleRate: TARGET_SR })
+      let decoded: AudioBuffer
+      try {
+        decoded = await ctx.decodeAudioData(wavBuffer)
+      } catch {
+        await ctx.close()
+        throw new Error('Could not decode extracted audio. Ensure the file contains a valid audio track.')
       }
-      return raw
+
+      try {
+        const raw = decoded.getChannelData(0)
+        let peak = 0
+        for (let i = 0; i < raw.length; i++) {
+          const abs = Math.abs(raw[i])
+          if (abs > peak) peak = abs
+        }
+        if (peak > 0.02 && peak < 0.9) {
+          const gain = 0.9 / peak
+          const normalised = new Float32Array(raw.length)
+          for (let i = 0; i < raw.length; i++) normalised[i] = raw[i] * gain
+          return normalised
+        }
+        return raw
+      } finally {
+        await ctx.close()
+      }
     } finally {
-      await ctx.close()
+      ff.deleteFile(inputName).catch(() => {})
+      ff.deleteFile(outputName).catch(() => {})
     }
   } finally {
-    try { await ff.deleteFile(inputName) } catch { /* ignore */ }
-    try { await ff.deleteFile(outputName) } catch { /* ignore */ }
+    releaseFfmpegLock()
   }
 }
 
@@ -219,7 +225,7 @@ export function createWhisperWorker(
 }
 
 // Phase 3: returns the best Whisper model that is verifiably cached in the browser.
-// Falls back to whisper-base (the default) if nothing better is confirmed present.
+// Falls back to whisper-tiny (the default) if nothing better is confirmed present.
 export async function getBestCachedModel(): Promise<WhisperModelId> {
   const ORDER: WhisperModelId[] = [
     'Xenova/whisper-medium',
@@ -236,7 +242,7 @@ export async function getBestCachedModel(): Promise<WhisperModelId> {
       await clearModelSentinel(modelId)
     }
   } catch { /* fall through */ }
-  return 'Xenova/whisper-base'
+  return 'Xenova/whisper-tiny'
 }
 
 async function verifyCachedShard(modelId: string): Promise<boolean> {

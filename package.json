@@ -7,8 +7,10 @@
     "dev": "vite",
     "prebuild": "node scripts/update-sitemap.mjs",
     "build": "tsc && vite build",
+    "postbuild": "node scripts/build-seo-routes.mjs",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build-ext": "powershell -c \"Compress-Archive -Path extension\\* -DestinationPath calmclip-extension.zip -Force\""
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

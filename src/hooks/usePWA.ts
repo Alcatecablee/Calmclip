@@ -10,14 +10,19 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface UsePWAReturn {
-  installState:    PWAInstallState
-  updateState:     PWAUpdateState
-  isStandalone:    boolean
-  triggerInstall:  () => Promise<void>
-  dismissInstall:  () => void
-  applyUpdate:     () => void
-  launchFile:      File | null
-  clearLaunchFile: () => void
+  installState:        PWAInstallState
+  updateState:         PWAUpdateState
+  isStandalone:        boolean
+  triggerInstall:      () => Promise<void>
+  dismissInstall:      () => void
+  applyUpdate:         () => void
+  launchFile:          File | null
+  clearLaunchFile:     () => void
+  extensionError:      string | null
+  clearExtensionError: () => void
+  extensionLoading:    boolean
+  startRecording:      boolean
+  clearStartRecording: () => void
 }
 
 const DISMISS_KEY  = 'calmclip-install-dismissed'
@@ -35,6 +40,9 @@ export function usePWA(): UsePWAReturn {
   const [installState, setInstallState] = useState<PWAInstallState>('unavailable')
   const [updateState,  _setUpdateState]  = useState<PWAUpdateState>('idle')
   const [launchFile,   setLaunchFile]   = useState<File | null>(null)
+  const [extensionError, setExtensionError] = useState<string | null>(null)
+  const [extensionLoading, setExtensionLoading] = useState(false)
+  const [startRecording, setStartRecording] = useState(false)
 
   const setUpdateState = useCallback((next: PWAUpdateState) => {
     updateStateRef.current = next
@@ -122,8 +130,8 @@ export function usePWA(): UsePWAReturn {
       if (!params.files?.length) return
       try {
         const file = await params.files[0].getFile()
-        if (file.type.startsWith('video/')) setLaunchFile(file)
-        else console.error('[CalmClip] launchQueue: not a video file:', file.type)
+        if (file.type.startsWith('video/') || file.type.startsWith('audio/')) setLaunchFile(file)
+        else console.error('[CalmClip] launchQueue: unsupported file type:', file.type)
       } catch (err) {
         console.error('[CalmClip] launchQueue file access failed:', err)
       }
@@ -148,14 +156,14 @@ export function usePWA(): UsePWAReturn {
         return
       }
       try {
-        const buffer = await resp.arrayBuffer()
+        const blob   = await resp.blob()
         const type   = resp.headers.get('Content-Type') ?? 'video/mp4'
         const name   = resp.headers.get('X-File-Name')  ?? 'shared-video.mp4'
-        if (!type.startsWith('video/')) {
+        if (!type.startsWith('video/') && !type.startsWith('audio/')) {
           console.error('[CalmClip] Share target: unexpected MIME type:', type)
           return
         }
-        setLaunchFile(new File([buffer], name, { type }))
+        setLaunchFile(new File([blob], name, { type }))
         await cache.delete(SHARE_KEY)
       } catch (err) {
         console.error('[CalmClip] Share target: failed to read cached file:', err)
@@ -163,6 +171,118 @@ export function usePWA(): UsePWAReturn {
     }).catch(err => {
       console.error('[CalmClip] Share target: cache open failed:', err)
     })
+  }, [])
+
+  // Extension API v0 / Taskbar shortcuts / Extension Stream
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const source = params.get('source')
+    
+    if (source === 'shortcut-record') {
+      setStartRecording(true)
+      params.delete('source')
+      const newSearch = params.toString() ? `?${params.toString()}` : ''
+      history.replaceState({}, '', location.pathname + newSearch)
+      return
+    }
+
+    if (source === 'shortcut-edit' || source === 'file-handler' || source === 'pwa') {
+      params.delete('source')
+      const newSearch = params.toString() ? `?${params.toString()}` : ''
+      history.replaceState({}, '', location.pathname + newSearch)
+      return
+    }
+
+    if (source === 'extension_stream') {
+      setExtensionLoading(true)
+
+      let loadingTimer: ReturnType<typeof setTimeout> | null = null
+
+      function finishStream() {
+        if (loadingTimer !== null) { clearTimeout(loadingTimer); loadingTimer = null }
+        params.delete('source')
+        const newSearch = params.toString() ? `?${params.toString()}` : ''
+        history.replaceState({}, '', location.pathname + newSearch)
+        window.removeEventListener('message', handleMessage)
+      }
+      
+      const handleMessage = (e: MessageEvent) => {
+        if (!e.data) return
+        if (e.origin !== location.origin) return
+
+        if (e.data.type === 'CALMCLIP_BLOB_READY') {
+          const file = new File([e.data.blob], e.data.name || 'streamed-video.mp4', {
+            type: e.data.blob.type || 'video/mp4'
+          })
+          setLaunchFile(file)
+          setExtensionLoading(false)
+          finishStream()
+        }
+        else if (e.data.type === 'CALMCLIP_STREAM_ERROR') {
+          setExtensionError(e.data.error || 'Failed to stream video.')
+          setExtensionLoading(false)
+          finishStream()
+        }
+      }
+
+      window.addEventListener('message', handleMessage)
+
+      // If no message arrives within 60 s the SW or content script is dead.
+      loadingTimer = setTimeout(() => {
+        loadingTimer = null
+        setExtensionError('The video stream timed out. Please try again.')
+        setExtensionLoading(false)
+        finishStream()
+      }, 60_000)
+      
+      // Tell the receiver script that the app is hydrated and listening.
+      // This solves the race condition where the blob finished downloading
+      // before React finished booting up.
+      window.postMessage({ type: 'CALMCLIP_APP_READY' }, '*')
+      return
+    }
+
+    if (source !== 'extension') return
+
+    const errorParam = params.get('error')
+    const videoParam = params.get('video')
+
+    // Clean only extension-related params from the URL so refresh doesn't re-trigger
+    params.delete('source')
+    params.delete('error')
+    params.delete('video')
+    const newSearch = params.toString() ? `?${params.toString()}` : ''
+    history.replaceState({}, '', location.pathname + newSearch)
+
+    if (errorParam) {
+      setExtensionError(errorParam)
+      return
+    }
+
+    if (!videoParam) return
+
+    async function fetchExtensionMedia(url: string) {
+      setExtensionLoading(true)
+      try {
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+        const blob = await res.blob()
+        const type = blob.type || 'video/mp4' // fallback if server doesn't send content-type
+        const name = url.split('/').pop()?.split('?')[0] || 'extension-media.mp4'
+
+        setLaunchFile(new File([blob], name, { type }))
+      } catch (err) {
+        console.error('[CalmClip] Extension direct fetch failed:', err)
+        setExtensionError(
+          'Could not fetch the video directly. The website might be blocking external access (CORS). ' +
+          'Try downloading the video first, then drop it into CalmClip.'
+        )
+      } finally {
+        setExtensionLoading(false)
+      }
+    }
+    fetchExtensionMedia(videoParam)
   }, [])
 
   const triggerInstall = useCallback(async () => {
@@ -191,7 +311,9 @@ export function usePWA(): UsePWAReturn {
     reg.waiting.postMessage({ type: 'SKIP_WAITING' })
   }, [setUpdateState])
 
-  const clearLaunchFile = useCallback(() => setLaunchFile(null), [])
+  const clearLaunchFile      = useCallback(() => setLaunchFile(null), [])
+  const clearExtensionError  = useCallback(() => setExtensionError(null), [])
+  const clearStartRecording  = useCallback(() => setStartRecording(false), [])
 
   return {
     installState,
@@ -202,5 +324,10 @@ export function usePWA(): UsePWAReturn {
     applyUpdate,
     launchFile,
     clearLaunchFile,
+    extensionError,
+    clearExtensionError,
+    extensionLoading,
+    startRecording,
+    clearStartRecording,
   }
 }

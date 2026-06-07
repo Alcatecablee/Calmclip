@@ -1,28 +1,28 @@
-import { EyeOff, VolumeX, Maximize2, Volume2 } from 'lucide-react'
+import { ShieldCheck, Cpu, Sparkles, Globe } from 'lucide-react'
 
 const FEATURES = [
   {
-    Icon: EyeOff,
-    label: 'Privacy-safe face blur',
-    desc: 'Detects faces in the browser and lets you adjust the blur regions before exporting. No frames are sent anywhere.',
+    Icon: ShieldCheck,
+    label: 'Zero-Upload Architecture',
+    desc: 'Bypass your browser memory limits. Edit 4GB+ files instantly without ever uploading them to a server.',
     featured: true,
   },
   {
-    Icon: VolumeX,
-    label: 'Silence removal',
-    desc: 'Scans the audio and cuts the dead air. Works well on recorded calls, lectures, and interviews.',
+    Icon: Cpu,
+    label: 'Hardware Acceleration',
+    desc: 'CalmClip directly accesses your GPU via WebCodecs to render and export H.264 video at lightning speeds.',
     featured: false,
   },
   {
-    Icon: Maximize2,
-    label: 'Resize to any ratio',
-    desc: 'Export to landscape, vertical, square, or 4:5 from a single source file. Fit or fill crop, your choice.',
+    Icon: Sparkles,
+    label: '100% Local AI',
+    desc: 'Auto-captions, silence removal, and face detection are powered by WASM models running securely on your machine.',
     featured: false,
   },
   {
-    Icon: Volume2,
-    label: 'Loudness normalization',
-    desc: 'Brings peaky or quiet audio to a consistent level. Good for podcasts, tutorials, and anything going to YouTube.',
+    Icon: Globe,
+    label: 'Browser-Native Ingestion',
+    desc: 'Install the extension to pull videos straight out of Google Drive and Dropbox, or record active tabs seamlessly.',
     featured: false,
   },
 ]
@@ -40,7 +40,7 @@ export default function LandingFeatures() {
         margin: '0 0 8px 0',
         lineHeight: 1.18,
       }}>
-        The tools you actually reach for
+        Browser limits, shattered.
       </h2>
       <p style={{
         fontSize: 13,
@@ -50,7 +50,7 @@ export default function LandingFeatures() {
         lineHeight: 1.75,
         maxWidth: 460,
       }}>
-        Four tools that cover most editing jobs. None of them touch a server.
+        A professional video editor that operates completely outside the cloud.
       </p>
 
       <div style={{ width: '100%' }}>
