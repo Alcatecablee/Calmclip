@@ -73,7 +73,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { q: 'Can I trim multiple sections from one video?',       a: 'Yes. Use the manual cut mode to split at the playhead and delete individual sections. The silence cutter also auto-removes segments.' },
       { q: 'Does the free version include trimming?',            a: 'Yes. Trimming is a core free feature. No Pro licence required.' },
     ],
-    relatedSlugs: ['add-captions-to-video', 'remove-silence-from-video', 'resize-video-online', 'normalize-video-audio', 'remove-video-metadata'],
+    relatedSlugs: ['add-captions-to-video', 'remove-silence-from-video', 'resize-video-online', 'normalize-video-audio', 'record-screen-online'],
   },
 
   {
@@ -199,7 +199,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { q: 'Will it blur faces at an angle or in profile?',    a: 'Detection accuracy varies by angle, lighting, and resolution. The manual region tool covers cases where automatic detection falls short.' },
       { q: 'Does it blur audio?',                              a: 'No. Face blurring applies only to the video track. Voice anonymization is not currently in CalmClip.' },
     ],
-    relatedSlugs: ['remove-video-metadata', 'trim-video-online', 'add-watermark-to-video', 'resize-video-online', 'batch-export-video'],
+    relatedSlugs: ['remove-video-metadata', 'trim-video-online', 'add-watermark-to-video', 'video-editor-for-lawyers', 'video-editor-for-journalists'],
   },
 
   {
@@ -283,7 +283,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { q: 'Can I use normalization with silence removal?', a: 'Yes. Combine any editing tools in the same session. They all apply in one export.' },
       { q: 'Does it change the video quality?',     a: 'No. Normalization only affects the audio track.' },
     ],
-    relatedSlugs: ['remove-silence-from-video', 'trim-video-online', 'remove-filler-words', 'add-captions-to-video', 'remove-video-metadata'],
+    relatedSlugs: ['denoise-audio-online', 'remove-silence-from-video', 'trim-video-online', 'remove-filler-words', 'add-captions-to-video'],
   },
 
   {
@@ -493,7 +493,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { q: 'Can I edit the transcript?',                     a: 'Yes. Every word is editable in the caption editor. You can fix names, technical terms, and anything the model missed.' },
       { q: 'Does the Whisper model need to be downloaded each time?', a: 'No. It is cached in your browser after the first download.' },
     ],
-    relatedSlugs: ['add-captions-to-video', 'remove-filler-words', 'trim-video-online', 'remove-silence-from-video', 'remove-video-metadata'],
+    relatedSlugs: ['add-captions-to-video', 'generate-video-chapters', 'remove-filler-words', 'trim-video-online', 'remove-silence-from-video'],
   },
 
   {
@@ -829,7 +829,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { q: 'What video format should I upload to YouTube Shorts?', a: 'YouTube Shorts accepts MP4, MOV, and AVI. CalmClip exports MP4 by default, which is the recommended format.' },
       { q: 'Can I trim and crop in the same export?',        a: 'Yes. Set your trim points and select 9:16 before exporting. Both apply in a single FFmpeg pass.' },
     ],
-    relatedSlugs: ['resize-video-online', 'trim-video-online', 'add-captions-to-video', 'crop-video-for-tiktok', 'batch-export-video'],
+    relatedSlugs: ['resize-video-online', 'crop-video-for-instagram', 'crop-video-for-tiktok', 'trim-video-online', 'batch-export-video'],
   },
 
   {
@@ -871,7 +871,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { q: 'Can I use CalmClip on a firm-managed device?',        a: 'CalmClip is a web app that runs in any modern browser. It requires no installation, no admin rights, and no software deployment. It works on any managed device that allows standard web browsing.' },
       { q: 'What happens to my video when I close the tab?',      a: 'Your video is processed in browser memory. Closing the tab clears it. Nothing persists on any server. Export your edited video before closing.' },
     ],
-    relatedSlugs: ['face-blur-video', 'remove-video-metadata', 'ai-video-transcription', 'trim-video-online', 'video-editor-for-journalists'],
+    relatedSlugs: ['face-blur-video', 'remove-video-metadata', 'ai-video-transcription', 'video-editor-no-upload', 'video-editor-for-journalists'],
   },
 
   {
