@@ -903,21 +903,15 @@ export default function App() {
                 Free browser tools
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
-                {[
-                  { href: '/trim-video-online',        label: 'Trim video online'          },
-                  { href: '/add-captions-to-video',    label: 'Add captions to video'      },
-                  { href: '/remove-silence-from-video', label: 'Remove silence from video' },
-                  { href: '/face-blur-video',           label: 'Blur faces in video'       },
-                  { href: '/resize-video-online',       label: 'Resize video online'       },
-                ].map(({ href, label }) => (
+                {FEATURE_PAGES.map(page => (
                   <a
-                    key={href}
-                    href={href}
+                    key={page.slug}
+                    href={`/${page.slug}`}
                     style={{ fontSize: 13, color: 'var(--primary)', textDecoration: 'none' }}
                     onMouseOver={e => (e.currentTarget.style.textDecoration = 'underline')}
                     onMouseOut={e => (e.currentTarget.style.textDecoration = 'none')}
                   >
-                    {label}
+                    {page.shortLabel}
                   </a>
                 ))}
               </div>

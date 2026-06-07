@@ -255,7 +255,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       <div className="section-reveal" style={{ width: '100%', maxWidth: 820, marginTop: 80 }}>
         <SectionEyebrow label="How it works" />
         <SectionHeading>{config.stepsHeadline}</SectionHeading>
-        <SectionSubtext>Four steps. No account, no install, no upload.</SectionSubtext>
+        <SectionSubtext>{`No account, no install, no upload. Just open a file and ${config.ctaLabel}.`}</SectionSubtext>
         <StepList steps={config.steps} />
       </div>
 
@@ -263,7 +263,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       <div className="section-reveal" style={{ width: '100%', maxWidth: 820, marginTop: 80 }}>
         <SectionEyebrow label="Why CalmClip" />
         <SectionHeading>{config.benefitsHeadline}</SectionHeading>
-        <SectionSubtext>All processing runs locally in your browser. Your footage never leaves your device.</SectionSubtext>
+        <SectionSubtext>Not one frame of your video touches a server. Everything runs in your browser, on your machine.</SectionSubtext>
         <RowList items={config.benefits} />
       </div>
 
@@ -271,7 +271,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       <div className="section-reveal" style={{ width: '100%', maxWidth: 820, marginTop: 80 }}>
         <SectionEyebrow label="Built for" />
         <SectionHeading>{config.useCasesHeadline}</SectionHeading>
-        <SectionSubtext>Anyone whose footage cannot go to a server, or anyone tired of waiting for uploads to finish.</SectionSubtext>
+        <SectionSubtext>Built for anyone whose footage cannot leave their machine, and anyone fed up with upload spinners.</SectionSubtext>
         <RowList items={config.useCases} />
       </div>
 
@@ -279,7 +279,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       <div className="section-reveal" style={{ width: '100%', maxWidth: 820, marginTop: 80 }}>
         <SectionEyebrow label="FAQ" />
         <SectionHeading>Common questions</SectionHeading>
-        <SectionSubtext>The short answer to most of them: your video never leaves your device.</SectionSubtext>
+        <SectionSubtext>{`If you have questions about ${config.shortLabel.toLowerCase()}, these are the ones we hear most.`}</SectionSubtext>
         <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {config.faq.map((item, i) => (
             <FaqRow
@@ -329,7 +329,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
                 {page.metaDesc.split('.')[0]}.
               </span>
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', marginTop: 4 }}>
-                {page.slug}
+                Try it free
               </span>
             </a>
           ))}
