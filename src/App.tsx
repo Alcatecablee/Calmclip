@@ -601,12 +601,12 @@ export default function App() {
       }}
     >
       <header className={`navbar-header${step !== 'drop' ? ' navbar-header--slim' : ''}`}>
-        <div className="navbar-logo-container">
+        <a href="/" className="navbar-logo-container" style={{ textDecoration: 'none' }}>
           <img src="/logo.png" alt="CalmClip" style={{ height: step !== 'drop' ? 24 : 30, width: step !== 'drop' ? 24 : 30, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
           {step === 'drop' && (
             <img src="/wordmark.png" alt="" aria-hidden="true" style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0, marginTop: 5 }} />
           )}
-        </div>
+        </a>
 
         {step === 'drop' && (
           <nav className="navbar-center">
