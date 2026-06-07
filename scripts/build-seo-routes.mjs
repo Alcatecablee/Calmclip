@@ -571,6 +571,44 @@ function buildHowToSchema(howTo) {
   }, null, 2)
 }
 
+const SLUG_CATEGORY = {
+  'trim-video-online':             'Editing',
+  'remove-silence-from-video':     'Editing',
+  'remove-filler-words':           'Editing',
+  'batch-export-video':            'Editing',
+  'video-editor-no-upload':        'Editing',
+  'normalize-video-audio':         'Audio',
+  'denoise-audio-online':          'Audio',
+  'add-captions-to-video':         'AI tools',
+  'ai-video-transcription':        'AI tools',
+  'generate-video-chapters':       'AI tools',
+  'face-blur-video':               'Privacy',
+  'remove-video-metadata':         'Privacy',
+  'resize-video-online':           'Formats',
+  'crop-video-for-tiktok':         'Formats',
+  'crop-video-for-instagram':      'Formats',
+  'crop-video-for-youtube-shorts': 'Formats',
+  'record-screen-online':          'Create',
+  'add-watermark-to-video':        'Create',
+  'extract-video-thumbnail':       'Create',
+  'video-editor-for-lawyers':      'Professional',
+  'video-editor-for-journalists':  'Professional',
+}
+
+function buildBreadcrumbSchema(path, title) {
+  const category = SLUG_CATEGORY[path] ?? 'Tools'
+  const shortName = title.split('|')[0].trim()
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'CalmClip', item: 'https://calmclip.video/' },
+      { '@type': 'ListItem', position: 2, name: category },
+      { '@type': 'ListItem', position: 3, name: shortName, item: `https://calmclip.video/${path}` },
+    ],
+  }, null, 2)
+}
+
 function buildFaqSchema(faq) {
   return JSON.stringify({
     '@context': 'https://schema.org',
@@ -628,6 +666,9 @@ if (existsSync(indexPath)) {
     html = html
       .replace(/<h1>.*?<\/h1>/, `<h1>${route.h1}</h1>`)
       .replace(/<p>Trim, caption.*?<\/p>/, `<p>${route.h2} ${route.desc}</p>`)
+
+    const breadcrumbSchemaTag = `  <script type="application/ld+json">\n  ${buildBreadcrumbSchema(route.path, route.title)}\n  </script>`
+    html = html.replace('</head>', `${breadcrumbSchemaTag}\n</head>`)
 
     if (route.faq && route.faq.length > 0) {
       const faqSchemaTag = `  <script type="application/ld+json">\n  ${buildFaqSchema(route.faq)}\n  </script>`

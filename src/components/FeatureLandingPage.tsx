@@ -1,6 +1,84 @@
-import { useState } from 'react'
-import { ChevronDown, Check, Sparkles } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ChevronDown, ChevronRight, Check, Sparkles } from 'lucide-react'
 import type { FeaturePageConfig } from '../lib/featurePages'
+
+const SLUG_CATEGORY: Record<string, string> = {
+  'trim-video-online':             'Editing',
+  'remove-silence-from-video':     'Editing',
+  'remove-filler-words':           'Editing',
+  'batch-export-video':            'Editing',
+  'video-editor-no-upload':        'Editing',
+  'normalize-video-audio':         'Audio',
+  'denoise-audio-online':          'Audio',
+  'add-captions-to-video':         'AI tools',
+  'ai-video-transcription':        'AI tools',
+  'generate-video-chapters':       'AI tools',
+  'face-blur-video':               'Privacy',
+  'remove-video-metadata':         'Privacy',
+  'resize-video-online':           'Formats',
+  'crop-video-for-tiktok':         'Formats',
+  'crop-video-for-instagram':      'Formats',
+  'crop-video-for-youtube-shorts': 'Formats',
+  'record-screen-online':          'Create',
+  'add-watermark-to-video':        'Create',
+  'extract-video-thumbnail':       'Create',
+  'video-editor-for-lawyers':      'Professional',
+  'video-editor-for-journalists':  'Professional',
+}
+
+function Breadcrumb({ slug, shortLabel }: { slug: string; shortLabel: string }) {
+  const category = SLUG_CATEGORY[slug] ?? 'Tools'
+
+  useEffect(() => {
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'CalmClip', item: 'https://calmclip.video/' },
+        { '@type': 'ListItem', position: 2, name: category },
+        { '@type': 'ListItem', position: 3, name: shortLabel, item: `https://calmclip.video/${slug}` },
+      ],
+    }
+    const el = document.createElement('script')
+    el.type = 'application/ld+json'
+    el.id = 'breadcrumb-schema'
+    el.textContent = JSON.stringify(schema)
+    document.head.appendChild(el)
+    return () => { document.getElementById('breadcrumb-schema')?.remove() }
+  }, [slug, shortLabel, category])
+
+  return (
+    <nav aria-label="Breadcrumb" style={{ width: '100%', maxWidth: 820, marginBottom: 24 }}>
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px 0' }}>
+        <li style={{ display: 'flex', alignItems: 'center' }}>
+          <a
+            href="/"
+            style={{ fontSize: 12, color: 'var(--text-dim)', textDecoration: 'none' }}
+            onMouseOver={e => (e.currentTarget.style.color = 'var(--primary)')}
+            onMouseOut={e => (e.currentTarget.style.color = 'var(--text-dim)')}
+          >
+            CalmClip
+          </a>
+          <ChevronRight size={11} color="var(--text-dim)" style={{ margin: '0 4px', flexShrink: 0 }} />
+        </li>
+        <li style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            {category}
+          </span>
+          <ChevronRight size={11} color="var(--text-dim)" style={{ margin: '0 4px', flexShrink: 0 }} />
+        </li>
+        <li>
+          <span
+            style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}
+            aria-current="page"
+          >
+            {shortLabel}
+          </span>
+        </li>
+      </ol>
+    </nav>
+  )
+}
 
 interface Props {
   config:       FeaturePageConfig
@@ -164,19 +242,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       style={{ padding: '44px 24px 80px', background: 'var(--bg-page)' }}
     >
 
-      {/* Back link */}
-      <div style={{ width: '100%', maxWidth: 820, marginBottom: 24 }}>
-        <a
-          href="/"
-          style={{ fontSize: 12, color: 'var(--text-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-          onMouseOver={e => (e.currentTarget.style.color = 'var(--primary)')}
-          onMouseOut={e => (e.currentTarget.style.color = 'var(--text-dim)')}
-        >
-          CalmClip
-        </a>
-        <span style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 6px' }}>/</span>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{config.shortLabel}</span>
-      </div>
+      <Breadcrumb slug={config.slug} shortLabel={config.shortLabel} />
 
       {/* Hero */}
       <div style={{ width: '100%', maxWidth: 820 }}>
