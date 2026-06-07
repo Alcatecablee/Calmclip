@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight, Check, Sparkles } from 'lucide-react'
 import type { FeaturePageConfig } from '../lib/featurePages'
 
@@ -230,6 +230,51 @@ function StepList({ steps }: { steps: Array<{ label: string; desc: string }> }) 
   )
 }
 
+function HeroMedia({ slug }: { slug: string }) {
+  const [src, setSrc] = useState<string | null>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  useEffect(() => {
+    const exts = ['gif', 'webp', 'png']
+    let cancelled = false
+
+    async function probe() {
+      for (const ext of exts) {
+        const url = `/screenshots/${slug}.${ext}`
+        try {
+          const res = await fetch(url, { method: 'HEAD' })
+          if (res.ok && !cancelled) { setSrc(url); return }
+        } catch { /* not found */ }
+      }
+    }
+    probe()
+    return () => { cancelled = true }
+  }, [slug])
+
+  if (!src) return null
+
+  return (
+    <div style={{
+      width:        '100%',
+      marginTop:    36,
+      borderRadius: 14,
+      overflow:     'hidden',
+      border:       '1px solid var(--border)',
+      background:   'var(--bg-surface)',
+      lineHeight:   0,
+    }}>
+      <img
+        ref={imgRef}
+        src={src}
+        alt=""
+        loading="lazy"
+        style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 480, objectFit: 'cover', objectPosition: 'top' }}
+        onError={() => setSrc(null)}
+      />
+    </div>
+  )
+}
+
 export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUpgrade }: Props) {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
@@ -315,6 +360,8 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
             </button>
           )}
         </div>
+
+        <HeroMedia slug={config.slug} />
       </div>
 
       {/* How it works */}
