@@ -62,6 +62,8 @@ import { PreExportReport, PostExportReport } from './components/ExportReport'
 import FileSizeReadout from './components/FileSizeReadout'
 import type { TranscriptResult, TranscriptChunk } from './lib/whisper'
 import { batchExport, type BatchProgress } from './lib/batchExport'
+import FeatureLandingPage from './components/FeatureLandingPage'
+import { FEATURE_PAGES } from './lib/featurePages'
 
 
 function fmtDur(s: number): string {
@@ -82,6 +84,11 @@ export default function App() {
   // --- Focused hooks ---
 
   const { trimStart, setTrimStart, trimEnd, setTrimEnd } = useTrim()
+
+  const currentFeaturePage = useMemo(() => {
+    const path = window.location.pathname.replace(/\/$/, '')
+    return FEATURE_PAGES.find(p => `/${p.slug}` === path) ?? null
+  }, [])
 
   const {
     manualCuts,
@@ -746,7 +753,15 @@ export default function App() {
 
       <main className="flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden">
 
-        {step === 'drop' && (
+        {step === 'drop' && currentFeaturePage && (
+          <FeatureLandingPage
+            config={currentFeaturePage}
+            allPages={FEATURE_PAGES}
+            onOpenVideo={() => dropZoneRef.current?.open()}
+            onUpgrade={openProModal}
+          />
+        )}
+        {step === 'drop' && !currentFeaturePage && (
           <div
             className="flex-1 flex flex-col items-center justify-start overflow-y-auto"
             style={{

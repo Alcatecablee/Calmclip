@@ -1,1 +1,2 @@
 - [Pro gating pattern](pro-gating.md) — Canva-style: pass `onProGate={!proActive ? openProModal : undefined}` to every Pro component; gate at the action button, not the UI render.
+- [Feature landing pages](feature-landing-pages.md) — 13 SEO routes, each a full React landing page. Architecture: useMemo path detect in App.tsx, renders FeatureLandingPage instead of homepage. Data in src/lib/featurePages.ts, template in src/components/FeatureLandingPage.tsx, build-time HTML in scripts/build-seo-routes.mjs.
