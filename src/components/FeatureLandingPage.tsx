@@ -416,7 +416,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       <div className="section-reveal" style={{ width: '100%', maxWidth: 820, marginTop: 80 }}>
         <SectionEyebrow label="How it works" />
         <SectionHeading>{config.stepsHeadline}</SectionHeading>
-        <SectionSubtext>{`No account, no install, no upload. Just open a file and ${config.ctaLabel}.`}</SectionSubtext>
+        <SectionSubtext>{config.stepsSubtext ?? `No account, no install, no upload. Just open a file and ${config.ctaLabel}.`}</SectionSubtext>
         <StepList steps={config.steps} />
       </div>
 
@@ -490,7 +490,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
                 {page.metaDesc.split('.')[0]}.
               </span>
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', marginTop: 4 }}>
-                Try it free
+                {page.isPro ? 'Pro feature' : 'Try it free'}
               </span>
             </a>
           ))}
@@ -518,7 +518,9 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
             Ready to {config.ctaLabel}?
           </p>
           <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, lineHeight: 1.7 }}>
-            Free, no account, nothing to install. Drop your file and start.
+            {config.isPro
+              ? 'Pro feature. No account required. Runs entirely in your browser.'
+              : 'Free, no account, nothing to install. Drop your file and start.'}
           </p>
         </div>
         <button

@@ -25,6 +25,7 @@ export interface FeaturePageConfig {
   isPro:             boolean
   ctaLabel:          string
   stepsHeadline:     string
+  stepsSubtext?:     string
   steps:             FeatureStep[]
   benefitsHeadline:  string
   benefitsSubtext:   string
@@ -678,6 +679,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
     isPro:       true,
     ctaLabel:    'generate your chapters',
     stepsHeadline: 'How chapter generation works in CalmClip',
+    stepsSubtext:  'Transcription must run first. Whisper downloads once to your browser cache and runs locally. Then the chapter generator reads the transcript.',
     steps: [
       { label: 'Open your video and transcribe', desc: 'Drop your video file, open the Captions tab, and run transcription. Whisper generates a word-level transcript with timestamps locally.' },
       { label: 'Open the Chapter Generator',     desc: 'Scroll to the Chapter Generator section below the transcript. It activates once transcription is complete.' },
