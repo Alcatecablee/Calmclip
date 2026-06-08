@@ -268,6 +268,7 @@ function HeroMedia({ slug, alt }: { slug: string; alt: string }) {
           loop
           muted
           playsInline
+          preload="none"
           aria-label={alt}
           style={{ ...mediaStyle, opacity: videoLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
           onCanPlay={() => setVideoLoaded(true)}
