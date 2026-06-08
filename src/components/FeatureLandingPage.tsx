@@ -396,7 +396,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       <div className="section-reveal" style={{ width: '100%', maxWidth: 820, marginTop: 80 }}>
         <SectionEyebrow label="Why CalmClip" />
         <SectionHeading>{config.benefitsHeadline}</SectionHeading>
-        <SectionSubtext>Not one frame of your video touches a server. Everything runs in your browser, on your machine.</SectionSubtext>
+        <SectionSubtext>{config.benefitsSubtext}</SectionSubtext>
         <RowList items={config.benefits} />
       </div>
 
@@ -404,7 +404,7 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
       <div className="section-reveal" style={{ width: '100%', maxWidth: 820, marginTop: 80 }}>
         <SectionEyebrow label="Built for" />
         <SectionHeading>{config.useCasesHeadline}</SectionHeading>
-        <SectionSubtext>Built for anyone whose footage cannot leave their machine, and anyone fed up with upload spinners.</SectionSubtext>
+        <SectionSubtext>{config.useCasesSubtext}</SectionSubtext>
         <RowList items={config.useCases} />
       </div>
 

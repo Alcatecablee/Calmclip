@@ -754,12 +754,17 @@ export default function App() {
       <main className="flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden">
 
         {step === 'drop' && currentFeaturePage && (
-          <FeatureLandingPage
-            config={currentFeaturePage}
-            allPages={FEATURE_PAGES}
-            onOpenVideo={() => dropZoneRef.current?.open()}
-            onUpgrade={openProModal}
-          />
+          <>
+            <FeatureLandingPage
+              config={currentFeaturePage}
+              allPages={FEATURE_PAGES}
+              onOpenVideo={() => dropZoneRef.current?.open()}
+              onUpgrade={openProModal}
+            />
+            <div style={{ display: 'none' }}>
+              <DropZone ref={dropZoneRef} onFile={handleFile} />
+            </div>
+          </>
         )}
         {step === 'drop' && !currentFeaturePage && (
           <div

@@ -27,8 +27,10 @@ export interface FeaturePageConfig {
   stepsHeadline:     string
   steps:             FeatureStep[]
   benefitsHeadline:  string
+  benefitsSubtext:   string
   benefits:          FeatureRow[]
   useCasesHeadline:  string
+  useCasesSubtext:   string
   useCases:          FeatureRow[]
   faq:               FaqItem[]
   relatedSlugs:      string[]
@@ -53,6 +55,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export the trimmed clip', desc: 'Click Export. FFmpeg processes the cut locally in your browser and saves the file to your device. No watermark, no quality loss.' },
     ],
     benefitsHeadline: 'Why trim in CalmClip',
+    benefitsSubtext:  'Trimming runs entirely on your device. No file goes anywhere.',
     benefits: [
       { label: 'Nothing uploads',        desc: 'Your video file never leaves your device. The trimming happens entirely in your browser using FFmpeg compiled to WebAssembly. No server sees your footage.', featured: true },
       { label: 'Handles large files',    desc: 'Because there is no upload step, file size does not cause delays. Drop a 2 GB clip and start trimming in seconds.' },
@@ -60,6 +63,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'One export, all edits',  desc: 'Trim, resize, strip metadata, normalize audio, and add captions all in one export. No quality loss from multiple re-encodes.' },
     ],
     useCasesHeadline: 'Who trims video in CalmClip',
+    useCasesSubtext:  'Anyone who needs to cut footage without handing it to a cloud service.',
     useCases: [
       { label: 'Journalists and legal teams', desc: 'Source footage and deposition recordings cannot go to a cloud service. CalmClip trims them locally, on your machine, without creating a copy on a server.', featured: true },
       { label: 'YouTubers',                   desc: 'Cut your raw recordings down to the final clip. Combine with loudness normalization and captions in the same session.' },
@@ -96,6 +100,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export with burned-in captions', desc: 'Choose your caption style, then export. FFmpeg burns the captions into the video frames locally and saves the file to your device.' },
     ],
     benefitsHeadline: 'Why add captions in CalmClip',
+    benefitsSubtext:  'The AI model downloads once and runs offline. Your audio never goes to an API.',
     benefits: [
       { label: 'Whisper AI, fully local',    desc: 'Your audio never goes to an API. Whisper runs via WebAssembly in your browser. The model downloads once and works offline after that.', featured: true },
       { label: 'Word-level editing',         desc: 'Every word in the transcript is editable. Fix names, technical terms, or anything Whisper missed without re-running transcription.' },
@@ -103,6 +108,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Combined with other edits',  desc: 'Add captions in the same session as trimming, silence removal, and resize. One export handles everything.' },
     ],
     useCasesHeadline: 'Who adds captions in CalmClip',
+    useCasesSubtext:  'Captions are expected now. These are the people who need them without a cloud dependency.',
     useCases: [
       { label: 'Journalists and legal teams',  desc: 'Transcripts of interviews and depositions must not pass through cloud services. CalmClip transcribes them with no server contact.', featured: true },
       { label: 'Content creators',             desc: 'Burned-in captions are the standard for short-form video. CalmClip generates and bakes them in one step.' },
@@ -139,6 +145,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export the tightened clip', desc: 'Click Export. FFmpeg removes all silent gaps locally and saves the faster, tighter version to your device.' },
     ],
     benefitsHeadline: 'Why remove silence in CalmClip',
+    benefitsSubtext:  'Silence detection runs on your audio locally. Nothing leaves your device.',
     benefits: [
       { label: 'No upload, no privacy risk',       desc: 'The audio analysis runs entirely in your browser. Your recording never reaches a third-party service.', featured: true },
       { label: 'Preview before cutting',           desc: 'You can see exactly which segments will be removed before you export. No surprises.' },
@@ -146,6 +153,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Works with filler word removal',   desc: 'Use silence removal and filler word detection together to clean up speech in one export pass.' },
     ],
     useCasesHeadline: 'Who removes silence in CalmClip',
+    useCasesSubtext:  'Dead air makes recordings harder to watch. These are the people who feel it most.',
     useCases: [
       { label: 'Podcasters',                     desc: 'Hours of recorded conversation have plenty of gaps. Silence removal cuts them all in one pass without manual scrubbing.', featured: true },
       { label: 'Educators and coaches',          desc: 'Zoom recordings and screen-recorded lectures are full of pauses. Strip them and your audience stays engaged.' },
@@ -171,7 +179,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
     title:       'Blur Faces in Video Online | Privacy Safe | CalmClip',
     metaDesc:    'Automatically detect and blur faces in videos online. Because CalmClip runs 100% locally in your browser, your unedited video never touches a server.',
     headline:    'Blur faces in video, completely privately',
-    subheadline: 'Protect identities without sending your footage anywhere. Face detection and blurring run on your machine using a local WASM model.',
+    subheadline: 'Protect identities without your footage leaving the room. Detection and blurring run directly on your machine, not a cloud service.',
     isPro:       true,
     ctaLabel:    'blur faces in your video',
     stepsHeadline: 'How face blurring works in CalmClip',
@@ -182,6 +190,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export the blurred video',       desc: 'Click Export. FFmpeg applies the blur locally and saves the result. Your unedited file is never altered.' },
     ],
     benefitsHeadline: 'Why blur faces in CalmClip',
+    benefitsSubtext:  'Detection runs on your machine. The unblurred version of your footage never leaves.',
     benefits: [
       { label: 'Local face detection, no cloud',       desc: 'The detection model runs on your device using ONNX Runtime Web. Unblurred frames never reach a server.', featured: true },
       { label: 'Manual region drawing',                desc: 'If automatic detection misses a face or you want to blur a sign, a screen, or a number plate, draw a blur region manually over any area.' },
@@ -189,6 +198,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Legal and HIPAA-appropriate',          desc: 'For footage that must not be processed by third parties, CalmClip\'s local processing respects those requirements.' },
     ],
     useCasesHeadline: 'Who blurs faces in CalmClip',
+    useCasesSubtext:  'Protecting identities in video is a legal and ethical requirement for some of these.',
     useCases: [
       { label: 'Journalists',             desc: 'Protecting source identities in recorded footage is a legal and ethical obligation. Local processing means no third party ever sees the unblurred frames.', featured: true },
       { label: 'Legal teams',             desc: 'Deposition and courtroom footage often requires anonymization before sharing. CalmClip handles it without cloud exposure.' },
@@ -225,6 +235,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export for the platform',  desc: 'Click Export. FFmpeg resizes and crops locally in your browser and saves the output file. No watermark.' },
     ],
     benefitsHeadline: 'Why resize in CalmClip',
+    benefitsSubtext:  'The resize and crop run in FFmpeg locally. Nothing uploads at any point.',
     benefits: [
       { label: 'No upload, no waiting',          desc: 'Cloud video converters make you wait for your file to upload before anything happens. CalmClip starts immediately because nothing leaves your device.', featured: true },
       { label: 'Smart crop and manual control', desc: 'Let CalmClip center the crop automatically, or drag the frame to exactly where you want it.' },
@@ -232,6 +243,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Batch export all ratios',        desc: 'With Pro, export 16:9, 9:16, 1:1, and 4:5 from one source file in a single click.' },
     ],
     useCasesHeadline: 'Who resizes video in CalmClip',
+    useCasesSubtext:  'Every platform wants a different format. These are the people dealing with that every week.',
     useCases: [
       { label: 'Short-form creators',     desc: 'TikTok, Instagram Reels, and YouTube Shorts all need 9:16. CalmClip crops your landscape footage in seconds.', featured: true },
       { label: 'Social media managers',   desc: 'Managing multiple platforms means multiple formats. Resize once locally instead of re-uploading to different tools.' },
@@ -268,6 +280,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export with normalized audio', desc: 'Click Export. FFmpeg applies loudness normalization alongside any other edits in a single pass.' },
     ],
     benefitsHeadline: 'Why normalize in CalmClip',
+    benefitsSubtext:  'Audio processing runs through FFmpeg in your browser. No cloud audio API involved.',
     benefits: [
       { label: 'Broadcast-standard LUFS targets', desc: 'Choose -14 LUFS (YouTube, Spotify), -16 LUFS (Apple Podcasts), or set a custom target for your platform.', featured: true },
       { label: 'Combined with denoise',           desc: 'Toggle audio denoising on in the same session to remove background hum and hiss before normalizing.' },
@@ -275,6 +288,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'One export pass',                 desc: 'Normalization, trimming, silence removal, and captions all apply in one FFmpeg command. No quality lost to multiple re-encodes.' },
     ],
     useCasesHeadline: 'Who normalizes audio in CalmClip',
+    useCasesSubtext:  'Inconsistent volume is one of the fastest ways to lose an audience.',
     useCases: [
       { label: 'Podcasters',       desc: 'Audio consistency across episodes is what separates professional shows from amateur ones. Normalize your recording before publishing.', featured: true },
       { label: 'YouTubers',        desc: 'YouTube auto-adjusts volume but normalizing to -14 LUFS before upload gives you more control over how your content sounds.' },
@@ -311,6 +325,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export with metadata removed',       desc: 'Toggle stripping on and export. FFmpeg removes all non-essential metadata during the export pass. Your original file is not touched.' },
     ],
     benefitsHeadline: 'Why strip metadata in CalmClip',
+    benefitsSubtext:  'Metadata is read and stripped locally. Your location data never goes to a server.',
     benefits: [
       { label: 'See it before you remove it', desc: 'CalmClip shows you the actual metadata in your file before any action. You know exactly what you are removing.', featured: true },
       { label: 'GPS is the biggest risk',     desc: 'A video taken on a phone embeds your precise location into the file. This is not visible on playback but readable by anyone who receives the file.' },
@@ -318,6 +333,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'No cloud scan',               desc: 'Your file metadata is read and processed locally. Nothing is sent to a server to analyze your location or device data.' },
     ],
     useCasesHeadline: 'Who strips metadata in CalmClip',
+    useCasesSubtext:  'Most people do not know what their video files are carrying until they look.',
     useCases: [
       { label: 'Journalists and sources', desc: 'A video sent with GPS metadata can reveal where the source filmed it. Local stripping removes that risk before the file leaves the device.', featured: true },
       { label: 'Legal teams',             desc: 'Metadata can be discoverable in litigation. Strip it before sharing with parties who should not have it.' },
@@ -354,6 +370,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Stop and edit immediately',      desc: 'When you stop, the recording drops straight into the CalmClip editor. Trim, caption, normalize, and export without leaving the page.' },
     ],
     benefitsHeadline: 'Why record in CalmClip',
+    benefitsSubtext:  "Screen recording uses your browser's built-in API. Nothing installs, nothing uploads.",
     benefits: [
       { label: 'Nothing installs',            desc: 'The Screen Capture API is built into modern browsers. CalmClip uses it without a plugin, Chrome extension, or desktop app.', featured: true },
       { label: 'Goes directly into the editor', desc: 'Your recording is ready to trim and edit the moment you stop. No download and re-upload step.' },
@@ -361,6 +378,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Works with the full editor',   desc: 'Add captions, remove silence, normalize audio, and export to any ratio from your screen recording in one session.' },
     ],
     useCasesHeadline: 'Who uses screen recording in CalmClip',
+    useCasesSubtext:  'Screen recording should not require a download or an account.',
     useCases: [
       { label: 'Developers',          desc: 'Record a bug reproduction or a UI walkthrough and trim it down to the key moment before sharing with the team.', featured: true },
       { label: 'Educators',           desc: 'Capture a browser tab showing a lesson or demo. Add captions and export for your LMS.' },
@@ -386,7 +404,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
     title:       'Add a Watermark to Video Free | No Upload | CalmClip',
     metaDesc:    'Overlay your logo or brand image onto video before export. CalmClip burns watermarks in locally using FFmpeg. No upload, no cloud render farm.',
     headline:    'Add a watermark to video',
-    subheadline: 'Overlay your logo or any image onto video before export. Everything renders locally in your browser. Your original footage never touches a server.',
+    subheadline: 'Drop in your logo, position it, and burn it into the export. Works entirely in your browser. Your footage never touches a server.',
     isPro:       true,
     ctaLabel:    'watermark your video',
     stepsHeadline: 'How watermarking works in CalmClip',
@@ -397,6 +415,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export with the watermark burned in', desc: 'Click Export. FFmpeg composites your watermark over the video locally and saves the result.' },
     ],
     benefitsHeadline: 'Why watermark in CalmClip',
+    benefitsSubtext:  'Watermark compositing runs in FFmpeg locally. Your unbranded footage never leaves.',
     benefits: [
       { label: 'Supports transparent PNG',     desc: 'Upload a PNG with a transparent background and the logo blends cleanly onto your video without a white box.', featured: true },
       { label: 'Full position control',        desc: 'Place the watermark anywhere in the frame. Common positions include the top-right and bottom-left corners.' },
@@ -404,6 +423,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'No cloud render farm',         desc: 'Other watermarking tools make you upload your video to a server to burn in the overlay. CalmClip does it locally.' },
     ],
     useCasesHeadline: 'Who watermarks video in CalmClip',
+    useCasesSubtext:  'Anyone sharing video publicly and wanting to keep their brand on it.',
     useCases: [
       { label: 'Content creators',                desc: 'Brand your video before posting. A subtle logo in the corner signals ownership and keeps your brand visible as the clip spreads.', featured: true },
       { label: 'Agencies',                        desc: 'Watermark client deliverables with your agency logo before sending drafts for review.' },
@@ -440,6 +460,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Start the batch',                     desc: 'Click Start Batch. CalmClip exports each format one after the other, entirely in your browser. Each file downloads when it is ready.' },
     ],
     benefitsHeadline: 'Why batch export in CalmClip',
+    benefitsSubtext:  'Each format renders sequentially in your browser. Four exports, zero uploads.',
     benefits: [
       { label: 'Four formats from one source', desc: 'One recording, one editing session, four exports. No re-uploading the same file to different tools for each format.', featured: true },
       { label: 'Edits apply to all formats',   desc: 'Trim, silence removal, captions, and loudness normalization all carry through to every ratio in the batch.' },
@@ -447,6 +468,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Smart crop per ratio',         desc: 'Each ratio gets its own crop position. CalmClip applies smart centering automatically or lets you set it per ratio.' },
     ],
     useCasesHeadline: 'Who uses batch export in CalmClip',
+    useCasesSubtext:  'Different platforms, same content. These are the people managing that every week.',
     useCases: [
       { label: 'Social media managers',  desc: 'Managing multiple platforms means needing the same clip in four formats. Batch export removes the manual work.', featured: true },
       { label: 'Short-form creators',    desc: 'One take that needs to go on TikTok, Instagram, YouTube Shorts, and a feed post. One session, four files.' },
@@ -472,7 +494,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
     title:       'AI Video Transcription | Local Whisper, No Upload | CalmClip',
     metaDesc:    'Transcribe video audio using the Whisper model running locally in your browser. No cloud API, no upload. Accurate speech-to-text, fully private.',
     headline:    'Transcribe video with local AI',
-    subheadline: 'Whisper runs directly in your browser via WebAssembly. You get accurate speech-to-text without your audio ever touching a cloud API.',
+    subheadline: 'Your audio never goes near a cloud service. Whisper runs in the browser and gives you a word-level transcript you can edit before burning it in.',
     isPro:       true,
     ctaLabel:    'transcribe your video',
     stepsHeadline: 'How AI transcription works in CalmClip',
@@ -483,6 +505,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Use the transcript',           desc: 'Edit captions in the caption editor, export with burned-in subtitles, or use the transcript for filler word removal.' },
     ],
     benefitsHeadline: 'Why transcribe in CalmClip',
+    benefitsSubtext:  'Whisper runs in WebAssembly in your browser. No audio reaches any server.',
     benefits: [
       { label: 'Whisper accuracy, no cloud',  desc: 'OpenAI\'s Whisper model is one of the most accurate open speech recognition models. CalmClip runs it locally so your audio stays private.', featured: true },
       { label: 'Word-level timestamps',        desc: 'Every word in the transcript has a start and end time. This powers the caption editor, the filler word remover, and the chapter generator.' },
@@ -490,6 +513,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Runs once, cached',            desc: 'The Whisper model downloads the first time you use it and is cached in your browser. Subsequent transcriptions start immediately.' },
     ],
     useCasesHeadline: 'Who transcribes in CalmClip',
+    useCasesSubtext:  'Transcription used to mean handing your audio to a third-party service.',
     useCases: [
       { label: 'Journalists',       desc: 'Interview recordings contain sensitive source material. Local transcription means the content never reaches a cloud service.', featured: true },
       { label: 'Researchers',       desc: 'Transcribe recorded interviews and field recordings without sending them to an API provider.' },
@@ -526,6 +550,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export with fillers removed',    desc: 'Click Export. FFmpeg cuts every selected filler from the video and audio tracks and saves the cleaned version.' },
     ],
     benefitsHeadline: 'Why remove filler words in CalmClip',
+    benefitsSubtext:  'Detection runs from your local transcript. No audio or text goes to a cloud service.',
     benefits: [
       { label: 'Transcription-powered detection', desc: 'CalmClip detects fillers from the actual speech transcript, not from audio energy alone. This makes it accurate for words, not just pauses.', featured: true },
       { label: 'Review before cutting',           desc: 'Every filler is listed with a timestamp. You review and approve before anything is cut.' },
@@ -533,6 +558,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'No cloud processing',             desc: 'Transcription and filler detection both run locally. Your audio never goes to a cloud service.' },
     ],
     useCasesHeadline: 'Who removes filler words in CalmClip',
+    useCasesSubtext:  'Filler words are invisible to the speaker and obvious to the audience.',
     useCases: [
       { label: 'Podcasters',                desc: 'Hours of conversation will have hundreds of filler words. Removing them tightens the pacing without re-recording.', featured: true },
       { label: 'Online course creators',    desc: 'Clean speech in educational content builds credibility. Filler words in a lecture are distracting to students.' },
@@ -558,7 +584,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
     title:       'Extract Thumbnail from Video | Frame Capture | CalmClip',
     metaDesc:    'Grab any frame from your video as a full-resolution JPG. Scrub to the exact moment you want and download it in one click. Free, no upload.',
     headline:    'Extract a thumbnail from your video',
-    subheadline: 'Scrub to any frame and download it as a full-resolution JPG. No upload, no account. Just the frame you want, saved to your device.',
+    subheadline: 'Scrub to the frame you want and grab it. Full resolution, no upload, saved straight to your device.',
     isPro:       false,
     ctaLabel:    'extract a thumbnail',
     stepsHeadline: 'How thumbnail extraction works in CalmClip',
@@ -569,6 +595,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Download as JPG',                desc: 'Click Extract. CalmClip captures the frame at full resolution and downloads it as a JPG to your device.' },
     ],
     benefitsHeadline: 'Why extract thumbnails in CalmClip',
+    benefitsSubtext:  'Frame extraction runs locally in your browser. The video never uploads.',
     benefits: [
       { label: 'Full resolution output',    desc: 'The thumbnail is extracted from the actual video frame at its original dimensions. No downscaling.', featured: true },
       { label: 'No upload, instant',        desc: 'You are already editing the video in CalmClip. Extracting a thumbnail takes one click without moving the file anywhere.' },
@@ -576,6 +603,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Combined with editing',     desc: 'Edit your video first, then extract the thumbnail from the edited version. Everything in one session.' },
     ],
     useCasesHeadline: 'Who extracts thumbnails in CalmClip',
+    useCasesSubtext:  'A good thumbnail matters more than most people budget time for.',
     useCases: [
       { label: 'YouTubers',                desc: 'Custom thumbnails drive click-through rates. Extract the strongest frame from your video as the starting point for thumbnail design.', featured: true },
       { label: 'Social media managers',    desc: 'Grab a frame from a video clip to use as a static preview image on a post.' },
@@ -612,6 +640,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export the cleaned video',    desc: 'Click Export. FFmpeg processes your video locally, removes the background noise, and saves the result to your device.' },
     ],
     benefitsHeadline: 'Why denoise in CalmClip',
+    benefitsSubtext:  'Denoising runs through FFmpeg in your browser. Your audio never goes to a cloud service.',
     benefits: [
       { label: 'Local FFmpeg processing',       desc: 'Audio denoising runs via FFmpeg compiled to WebAssembly in your browser. Your audio never reaches a cloud noise-reduction API.', featured: true },
       { label: 'Combined with normalization',   desc: 'Enable both denoising and loudness normalization in the same session. One export pass handles both, with no quality loss from multiple encodes.' },
@@ -619,6 +648,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'One export, everything applied', desc: 'Trim, remove silence, add captions, normalize loudness, and denoise in one pass. No second tool, no re-encode.' },
     ],
     useCasesHeadline: 'Who denoises audio in CalmClip',
+    useCasesSubtext:  'Bad audio makes good content sound amateur. These are the setups where it hurts most.',
     useCases: [
       { label: 'Remote workers and podcasters', desc: 'Home studio recordings pick up HVAC hum, street noise, and keyboard clicks. Denoising cleans them up before you publish.', featured: true },
       { label: 'Educators and online teachers', desc: 'Lecture recordings made in untreated rooms have noticeable room echo. Strip it before distributing to students.' },
@@ -655,6 +685,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Copy and paste into YouTube',    desc: 'Copy the formatted chapter list and paste it into your YouTube description. Chapters appear automatically for viewers.' },
     ],
     benefitsHeadline: 'Why generate chapters in CalmClip',
+    benefitsSubtext:  'Transcription and chapter generation both run locally. Nothing leaves your device.',
     benefits: [
       { label: 'Transcript-powered, not guesswork', desc: 'Chapters come from the actual words in your video. CalmClip finds topic breaks in the text, not random time intervals or silence gaps.', featured: true },
       { label: 'No upload, fully private',          desc: 'Your transcript is generated locally by Whisper running in your browser. Nothing goes to a cloud service.' },
@@ -662,6 +693,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Editable before copy',              desc: 'Review every generated chapter title before copying. Rename any that are too generic or just plain wrong.' },
     ],
     useCasesHeadline: 'Who generates chapters in CalmClip',
+    useCasesSubtext:  'Chapters help viewers find what they need. Long-form content benefits most.',
     useCases: [
       { label: 'YouTubers with long-form content', desc: 'Tutorial videos, vlogs, and reviews benefit from chapters. Viewers skip to what they need and stay longer.', featured: true },
       { label: 'Course creators and educators',    desc: 'Lecture recordings and course modules are easier to navigate with chapter markers. Generate them from the transcript in one step.' },
@@ -698,6 +730,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export directly to your device', desc: 'Click Export. FFmpeg processes your video in the browser and saves the file to your device. No waiting on a cloud render queue.' },
     ],
     benefitsHeadline: 'Why no-upload editing matters',
+    benefitsSubtext:  'FFmpeg runs as a WebAssembly binary inside your browser tab. The editing engine is local.',
     benefits: [
       { label: 'FFmpeg runs in your browser',      desc: 'CalmClip compiles FFmpeg to WebAssembly. It runs as a native-speed binary inside your browser tab. No server involved.', featured: true },
       { label: 'No upload means no waiting',       desc: 'Cloud editors make you wait for your file to upload before editing starts. A 1 GB file can take minutes to upload. CalmClip starts in seconds.' },
@@ -705,6 +738,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Works offline once loaded',        desc: 'After the first load, CalmClip caches its WASM engine. Trim and cut video even without an internet connection.' },
     ],
     useCasesHeadline: 'Who needs a no-upload video editor',
+    useCasesSubtext:  'Some people cannot upload to a cloud service. Some just hate waiting.',
     useCases: [
       { label: 'Privacy-sensitive professionals', desc: 'Lawyers, journalists, and healthcare teams cannot let sensitive footage reach a third-party server. CalmClip processes it locally.', featured: true },
       { label: 'Anyone editing large files',      desc: 'Upload-based editors impose size limits because bandwidth costs money. CalmClip handles 1 GB and 4 GB files without hesitation.' },
@@ -741,6 +775,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export and upload to TikTok', desc: 'Click Export. CalmClip saves a 9:16 MP4 to your device. Upload directly to TikTok without any extra conversion step.' },
     ],
     benefitsHeadline: 'Why crop for TikTok in CalmClip',
+    benefitsSubtext:  'The crop and resize run in FFmpeg locally. No source footage ever uploads.',
     benefits: [
       { label: 'No upload, no watermark',        desc: 'Most free online resizers watermark your video or charge to remove it. CalmClip is free and never adds a watermark.', featured: true },
       { label: 'Drag to position the crop',      desc: 'Control exactly which part of the frame is visible. If your subject is off-center, drag the crop box to find them.' },
@@ -748,6 +783,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Handles any source ratio',       desc: 'Works on 16:9 landscape footage, 1:1 square clips, and anything in between. Any source ratio crops cleanly to 9:16.' },
     ],
     useCasesHeadline: 'Who crops for TikTok in CalmClip',
+    useCasesSubtext:  'TikTok is vertical-only. These are the people regularly converting footage for it.',
     useCases: [
       { label: 'Creators repurposing landscape footage', desc: 'YouTube video, Zoom recordings, or screen captures are all 16:9. CalmClip converts them to TikTok-ready 9:16 without re-recording.', featured: true },
       { label: 'Social media managers',                 desc: 'Convert client video content to TikTok format without uploading to a cloud converter or installing software.' },
@@ -784,6 +820,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export and post to Instagram', desc: 'Click Export. CalmClip saves the resized MP4 to your device. Post directly to Instagram.' },
     ],
     benefitsHeadline: 'Why resize for Instagram in CalmClip',
+    benefitsSubtext:  'All three Instagram ratios export locally. Nothing uploads at any point.',
     benefits: [
       { label: 'All three Instagram formats',    desc: 'Reels (9:16), feed (1:1), and portrait (4:5) are all available from the same resize panel. Switch between them before exporting.', featured: true },
       { label: 'No watermark, no account',       desc: 'CalmClip never watermarks your output. No login required. Use it as many times as you need.' },
@@ -791,6 +828,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Add captions before exporting',  desc: 'Burned-in captions are standard for Instagram Reels. Add them in CalmClip before exporting the resized clip.' },
     ],
     useCasesHeadline: 'Who resizes for Instagram in CalmClip',
+    useCasesSubtext:  'Instagram has three different video formats depending on where you post.',
     useCases: [
       { label: 'Instagram Reels creators',        desc: 'Landscape footage needs to become 9:16 for Reels. CalmClip crops and exports the vertical version without uploading to a converter.', featured: true },
       { label: 'Brand and product teams',         desc: 'Product videos filmed in 16:9 need to work in the Instagram feed and in Reels. Resize both formats locally from one source file.' },
@@ -827,6 +865,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export and upload to Shorts',  desc: 'Click Export. CalmClip saves a 9:16 MP4 to your device ready for upload to YouTube Shorts.' },
     ],
     benefitsHeadline: 'Why crop for YouTube Shorts in CalmClip',
+    benefitsSubtext:  'Crop and trim both run locally. The full-length source never uploads.',
     benefits: [
       { label: 'Trim and crop in one session', desc: 'YouTube Shorts has a length limit. Trim your clip and crop to 9:16 without switching between tools or re-uploading the file.', featured: true },
       { label: 'No watermark on the export',   desc: 'Shorts need to look clean. CalmClip never adds a watermark to your export, unlike many free online tools.' },
@@ -834,6 +873,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Repurpose long-form content',  desc: 'Extract the best moment from an existing YouTube video, crop to 9:16, and upload to Shorts to drive subscribers back to the full video.' },
     ],
     useCasesHeadline: 'Who crops for YouTube Shorts in CalmClip',
+    useCasesSubtext:  'Repurposing long-form content for Shorts on the same channel is the quickest growth lever most creators are not using enough.',
     useCases: [
       { label: 'YouTubers repurposing long-form content', desc: 'Extract the best moment from a long video, crop it to vertical, and upload it as a Short to drive subscribers back to the full video.', featured: true },
       { label: 'Creators building a Shorts channel',     desc: 'Produce 9:16 clips from any source footage without installing desktop editing software.' },
@@ -859,7 +899,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
     title:       'Privacy-Safe Video Editor for Lawyers and Legal Teams | CalmClip',
     metaDesc:    'Edit deposition recordings, court footage, and privileged video locally in your browser. CalmClip never uploads your footage to a server. Face blur, transcription, trim.',
     headline:    'Video editor built for legal teams',
-    subheadline: 'Deposition recordings, court footage, and interview videos cannot pass through a cloud service. CalmClip processes all of it in your browser, on your machine, without a server ever seeing a frame.',
+    subheadline: 'Deposition recordings and court footage cannot pass through a cloud service. CalmClip keeps everything on your machine, start to finish.',
     isPro:       false,
     ctaLabel:    'edit your legal footage',
     stepsHeadline: 'How CalmClip fits legal video workflows',
@@ -870,6 +910,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Export a clean redacted copy', desc: 'Click Export. CalmClip saves a new file with your edits applied. Your original footage is never altered.' },
     ],
     benefitsHeadline: 'Why legal teams use CalmClip',
+    benefitsSubtext:  'No frame of your footage reaches an external server at any point in the workflow.',
     benefits: [
       { label: 'Zero server contact',             desc: 'CalmClip uses FFmpeg compiled to WebAssembly and runs entirely inside the browser. No frame of your footage reaches any external server.', featured: true },
       { label: 'Face blur for redaction',         desc: 'Automatically detect and blur faces in video using a local ONNX model. Draw manual blur regions over any area: license plates, documents, identifying features.' },
@@ -877,6 +918,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Local AI transcription',          desc: 'The Whisper model runs in your browser. Transcribe deposition audio without sending a single audio byte to a cloud service.' },
     ],
     useCasesHeadline: 'Legal workflows that need local video editing',
+    useCasesSubtext:  'Legal video workflows have requirements cloud tools were not built around.',
     useCases: [
       { label: 'Deposition video preparation', desc: 'Clip key moments from deposition recordings, strip metadata, and blur non-party faces before presenting to co-counsel or using in court.', featured: true },
       { label: 'Courtroom footage review',     desc: 'Trim body camera footage and surveillance clips for case preparation. All processed locally, no footage stored on a cloud server.' },
@@ -913,6 +955,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Transcribe and trim',            desc: 'Transcribe interview audio using local Whisper AI, then trim to the quotes you need. All local, all private.' },
     ],
     benefitsHeadline: 'Why journalists use CalmClip',
+    benefitsSubtext:  'Editing, transcription, and face blur all run locally. Nothing enters a third-party system.',
     benefits: [
       { label: 'Source protection built in',     desc: 'Face blur runs on a local ONNX model. Metadata stripping is on by default. Transcription uses local Whisper. No stage of your workflow sends data to a third party.', featured: true },
       { label: 'GPS and device data stripped',   desc: 'Video recorded in the field embeds GPS coordinates and device identifiers. CalmClip removes them before export so shared footage carries no location trail.' },
@@ -920,6 +963,7 @@ export const FEATURE_PAGES: FeaturePageConfig[] = [
       { label: 'Works offline after first load', desc: 'Field work may happen without internet access. CalmClip caches its processing engine after first load and works offline for all editing tasks.' },
     ],
     useCasesHeadline: 'Journalism workflows that need local video editing',
+    useCasesSubtext:  'Source protection is not optional in this work.',
     useCases: [
       { label: 'Source interview footage',         desc: 'Blur the face and strip the metadata from source interview recordings before sending clips to editors or sharing in stories. All local, no cloud copy created.', featured: true },
       { label: 'Field recordings and documentary work', desc: 'Footage captured in sensitive locations carries GPS data that identifies where the recording happened. Strip it before the footage enters the editorial chain.' },
