@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Check, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronRight, Check, Sparkles, Link } from 'lucide-react'
 import type { FeaturePageConfig } from '../lib/featurePages'
 
 const SLUG_CATEGORY: Record<string, string> = {
@@ -297,6 +297,14 @@ function HeroMedia({ slug, alt }: { slug: string; alt: string }) {
 
 export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUpgrade }: Props) {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   const relatedPages = allPages.filter(p => config.relatedSlugs.includes(p.slug))
   const otherPages   = allPages.filter(p => p.slug !== config.slug)
@@ -381,6 +389,26 @@ export default function FeatureLandingPage({ config, allPages, onOpenVideo, onUp
               Try free features
             </button>
           )}
+          <button
+            onClick={copyLink}
+            title="Copy link to this page"
+            style={{
+              height:       42,
+              width:        42,
+              display:      'flex',
+              alignItems:   'center',
+              justifyContent: 'center',
+              flexShrink:   0,
+              background:   'var(--bg-surface)',
+              border:       '1px solid var(--border)',
+              borderRadius: 8,
+              color:        copied ? 'var(--primary)' : 'var(--text-muted)',
+              cursor:       'pointer',
+              transition:   'color 0.15s',
+            }}
+          >
+            {copied ? <Check size={16} /> : <Link size={16} />}
+          </button>
         </div>
       </div>
 
