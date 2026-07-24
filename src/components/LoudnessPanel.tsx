@@ -57,7 +57,7 @@ export default function LoudnessPanel({ target, onChange, denoise }: Props) {
         <>
           <div style={{ height: 1, background: 'var(--border)' }} />
           <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
-            Noise reduction: FFT-based filter applied at export. Works well for hiss, fans, and AC noise.
+            Noise reduction: removes hiss, fans, and AC hum. Applied at export — no effect on the preview.
           </p>
         </>
       )}

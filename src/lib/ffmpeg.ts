@@ -354,17 +354,16 @@ export const RATIO_SLUG: Record<Ratio, string> = {
 function buildAudioFilter(loudnessTarget: LoudnessTarget, denoiseAudio: boolean): string | null {
   const loud  = loudnormFilter(loudnessTarget)
   const parts = [
-    // afftdn has a large look-ahead buffer: it analyzes future audio frames to
-    // estimate the noise floor before outputting a single sample. In a simple
-    // -vf/-af pipeline the muxer stalls waiting for audio that is delayed by
-    // that buffer, freezing the export indefinitely (same failure mode as
-    // loudnorm without linear=true). Replace with two zero-latency biquad IIR
-    // filters: highpass removes sub-100 Hz rumble (air conditioning, handling
-    // noise, room tone) and lowpass removes above-7.5 kHz hiss (electrical
-    // interference, sibilance). For speech/interview content this covers the
-    // vast majority of real-world noise without any muxer synchronisation cost.
-    ...(denoiseAudio ? ['highpass=f=100', 'lowpass=f=7500'] : []),
-    ...(loud         ? [loud]                               : []),
+    // afftdn with tn=1 (real-time noise tracking) does NOT require a large
+    // look-ahead buffer — it estimates the noise floor continuously from
+    // incoming audio, so the muxer sync issue that affects the two-pass loudnorm
+    // filter does not apply here. nr=12 gives moderate reduction (12 dB) that
+    // removes hiss, fans, and AC noise without audible artefacts on speech.
+    // nf=-25 sets the noise floor threshold; content above this is treated as
+    // signal and left alone. The highpass pre-filter removes sub-80 Hz handling
+    // rumble before afftdn sees the signal, improving noise floor estimation.
+    ...(denoiseAudio ? ['highpass=f=80', 'afftdn=nr=12:nf=-25:tn=1'] : []),
+    ...(loud         ? [loud]                                         : []),
   ]
   return parts.length > 0 ? parts.join(',') : null
 }

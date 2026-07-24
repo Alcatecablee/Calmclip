@@ -138,17 +138,25 @@ export async function exportVideoWithCaptions({
       let lastNode: AudioNode = audioSource
 
       if (denoiseAudio) {
+        // Sub-80 Hz rumble removal (handling noise, room tone low-end)
         const hp = audioCtx.createBiquadFilter()
         hp.type = 'highpass'
-        hp.frequency.value = 100
+        hp.frequency.value = 80
         lastNode.connect(hp)
         lastNode = hp
 
-        const lp = audioCtx.createBiquadFilter()
-        lp.type = 'lowpass'
-        lp.frequency.value = 7500
-        lastNode.connect(lp)
-        lastNode = lp
+        // Noise gate: strongly compress content below the noise floor threshold
+        // so that background hiss/hum during pauses is suppressed. High ratio
+        // (20:1) acts as a gate; fast attack + moderate release preserves
+        // speech transients while clamping steady-state noise.
+        const noiseGate = audioCtx.createDynamicsCompressor()
+        noiseGate.threshold.value = -48  // dBFS — below this is treated as noise
+        noiseGate.knee.value      = 30   // soft knee to avoid abrupt cut-offs
+        noiseGate.ratio.value     = 20   // near-gate compression ratio
+        noiseGate.attack.value    = 0.003
+        noiseGate.release.value   = 0.2
+        lastNode.connect(noiseGate)
+        lastNode = noiseGate
       }
 
       if (loudnessTarget !== 'off') {
