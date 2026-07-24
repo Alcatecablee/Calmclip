@@ -5,6 +5,7 @@ import type { WatermarkConfig } from '../components/WatermarkPanel'
 import type { SilenceSegment } from './silenceCutter'
 import type { Ratio, CropMode } from './ffmpeg'
 import type { LoudnessTarget } from './loudness'
+import { validateExport } from './exportHandlers'
 
 export interface BatchProgress {
   ratio:   Ratio
@@ -43,6 +44,10 @@ export async function batchExport(
   removeSilence:  boolean,
   loudnessTarget: LoudnessTarget,
   denoiseAudio:   boolean,
+  hasAudio:       boolean,
+  stripMetadata:  boolean,
+  fileSize:       number,
+  duration:       number,
   baseName:       string,
   onProgress:     (p: BatchProgress[]) => void,
 ): Promise<void> {
@@ -53,6 +58,24 @@ export async function batchExport(
   }))
 
   onProgress([...progress])
+
+  const validationError = validateExport({
+    file:          { size: fileSize },
+    trimStart,
+    trimEnd,
+    duration,
+    silenceSegs,
+    removeSilence,
+    manualCuts,
+    blurRegions,
+  })
+  if (validationError) {
+    for (let i = 0; i < progress.length; i++) {
+      progress[i] = { ...progress[i], done: true, error: validationError.message }
+    }
+    onProgress([...progress])
+    return
+  }
 
   for (let i = 0; i < BATCH_RATIOS.length; i++) {
     const { ratio, w, h } = BATCH_RATIOS[i]
@@ -73,6 +96,8 @@ export async function batchExport(
         removeSilence,
         loudnessTarget,
         denoiseAudio,
+        hasAudio,
+        stripMetadata,
         onProgress: (pct) => {
           progress[i] = { ...progress[i], percent: Math.round(pct * 100) }
           onProgress([...progress])

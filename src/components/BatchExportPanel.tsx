@@ -1,4 +1,4 @@
-import { Package, CheckCircle2, Loader2 } from 'lucide-react'
+import { Package, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 import type { BatchProgress } from '../lib/batchExport'
 import type { Ratio } from '../lib/ffmpeg'
 
@@ -37,24 +37,29 @@ export default function BatchExportPanel({ running, progress, onClick, disabled,
         }
       </button>
 
-      {running && progress.length > 0 && (
+      {progress.length > 0 && (
         <div className="flex flex-col gap-1.5 pl-1">
           {progress.map(p => (
             <div key={p.ratio} className="flex items-center gap-2 text-xs">
-              {p.done
+              {p.error
+                ? <AlertCircle size={11} color="#ef4444" />
+                : p.done
                 ? <CheckCircle2 size={11} color="#10b981" />
                 : p.percent > 0
                   ? <Loader2 size={11} style={{ color: 'var(--primary)' }} className="animate-spin" />
                   : <div style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--border)' }} />
               }
-              <span style={{ color: p.done ? '#10b981' : p.percent > 0 ? 'var(--primary)' : 'var(--text-faint)', minWidth: 40 }}>
+              <span style={{ color: p.error ? '#ef4444' : p.done ? '#10b981' : p.percent > 0 ? 'var(--primary)' : 'var(--text-faint)', minWidth: 40 }}>
                 {p.ratio}
               </span>
               <span style={{ color: 'var(--text-faint)' }}>{RATIO_LABELS[p.ratio]}</span>
               {!p.done && p.percent > 0 && (
                 <span style={{ color: 'var(--text-faint)', marginLeft: 'auto' }}>{p.percent}%</span>
               )}
-              {p.done && (
+              {p.error && (
+                <span style={{ color: '#ef4444', marginLeft: 'auto', textAlign: 'right' }}>{p.error}</span>
+              )}
+              {p.done && !p.error && (
                 <span style={{ color: '#10b981', marginLeft: 'auto' }}>Done</span>
               )}
             </div>

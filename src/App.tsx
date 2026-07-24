@@ -1485,9 +1485,13 @@ export default function App() {
                               ratio={ratio}
                               onRatioChange={r => setRatio(r as Ratio)}
                               fillerCuts={fillerCuts}
+                               fileSize={file?.size || 0}
+                               duration={duration}
+                               stripMeta={stripMeta}
                               onExported={setExportedSize}
                               loudnessTarget={loudness}
                               denoiseAudio={denoiseAudio}
+                               hasAudio={hasAudio}
                               isPro={proActive}
                             />
 
@@ -1529,6 +1533,10 @@ export default function App() {
                                       removeSilence,
                                       loudness,
                                       denoiseAudio,
+                                       hasAudio,
+                                       stripMeta,
+                                       file.size,
+                                       duration,
                                       file.name.replace(/\.[^.]+$/, ''),
                                       p => setBatchProgress(p),
                                     )

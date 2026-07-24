@@ -18,6 +18,7 @@ import type { BlurRegion }      from '../components/FaceBlurPanel'
 import type { WatermarkConfig } from '../components/WatermarkPanel'
 import type { SilenceSegment }  from './silenceCutter'
 import type { CropMode }        from './ffmpeg'
+import { stripMetadataFromWebm } from './ffmpeg'
 import { LOUDNESS_PRESETS, type LoudnessTarget } from './loudness'
 
 interface ExportOptions {
@@ -37,6 +38,9 @@ interface ExportOptions {
   removeSilence?:  boolean
   loudnessTarget?: LoudnessTarget
   denoiseAudio?:   boolean
+  hasAudio?:       boolean
+  stripMetadata?:  boolean
+  onPhase?:        (label: string) => void
 }
 
 // ── Audio chain types and builder ────────────────────────────────────────
@@ -56,9 +60,8 @@ interface AudioBundle {
  * tracking and per-bin spectral subtraction, removing broadband noise (fans,
  * AC hum, room noise) across all frequencies including the speech band.
  *
- * Falls back to a simple 80 Hz high-pass filter if the worklet fails to load
- * (e.g. older browsers). When loudnessTarget is set, applies a DynamicsCompressor
- * and fixed-gain normalization approximating the chosen LUFS target.
+ * When loudnessTarget is set, applies a DynamicsCompressor and fixed-gain
+ * normalization approximating the chosen LUFS target.
  *
  * Called before the export Promise so AudioWorklet.addModule() can be awaited.
  */
@@ -72,56 +75,59 @@ async function buildAudioChain(
   audioEl.muted = false
 
   const ctx    = new AudioContext()
-  const source = ctx.createMediaElementSource(audioEl)
-  const dest   = ctx.createMediaStreamDestination()
+  try {
+    const source = ctx.createMediaElementSource(audioEl)
+    const dest   = ctx.createMediaStreamDestination()
 
-  let last: AudioNode = source
+    let last: AudioNode = source
 
-  if (denoise) {
-    try {
-      // Spectral subtraction processor: FFT_SIZE=512, HOP_SIZE=128, 4x overlap.
-      // Tracks the noise floor via per-bin running minimum over ~260 ms and
-      // subtracts it from each frame, suppressing continuous background noise.
-      await ctx.audioWorklet.addModule('/denoise-processor.js')
-      const denoiseNode = new AudioWorkletNode(ctx, 'calmclip-denoise')
-      last.connect(denoiseNode)
-      last = denoiseNode
-    } catch {
-      // AudioWorklet unavailable or module failed to load: fall back to a
-      // high-pass filter that removes sub-80 Hz rumble (handling noise, room tone).
-      const hp = ctx.createBiquadFilter()
-      hp.type            = 'highpass'
-      hp.frequency.value = 80
-      last.connect(hp)
-      last = hp
+    if (denoise) {
+      try {
+        // Spectral subtraction processor: FFT_SIZE=512, HOP_SIZE=128, 4x overlap.
+        // Tracks the noise floor via per-bin running minimum over ~260 ms and
+        // subtracts it from each frame, suppressing continuous background noise.
+        await ctx.audioWorklet.addModule('/denoise-processor.js')
+        const denoiseNode = new AudioWorkletNode(ctx, 'calmclip-denoise')
+        last.connect(denoiseNode)
+        last = denoiseNode
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        throw new Error(`Audio denoise setup failed: ${message}`)
+      }
     }
+
+    if (loudnessTarget !== 'off') {
+      // Dynamics compressor for peak control before the gain stage
+      const compressor = ctx.createDynamicsCompressor()
+      compressor.threshold.value = -24
+      compressor.knee.value      = 10
+      compressor.ratio.value     = 8
+      compressor.attack.value    = 0.003
+      compressor.release.value   = 0.25
+      last.connect(compressor)
+      last = compressor
+
+      // Fixed-gain loudness approximation: assumes source is -18 LUFS (typical speech)
+      // and applies the gain delta to reach the chosen preset. This is a one-pass
+      // approximation; the FFmpeg loudnorm path provides a more accurate measurement.
+      const gainNode = ctx.createGain()
+      const sourceLufs = -18
+      const preset     = LOUDNESS_PRESETS.find(p => p.key === loudnessTarget)
+      const gainDb     = preset ? (preset.lufs - sourceLufs) : 0
+      gainNode.gain.value = Math.pow(10, gainDb / 20)
+      last.connect(gainNode)
+      last = gainNode
+    }
+
+    last.connect(dest)
+    return { ctx, source, audioEl, dest }
+  } catch (error) {
+    try { await ctx.close() } catch { /* cleanup is best effort */ }
+    audioEl.pause()
+    audioEl.src = ''
+    audioEl.load()
+    throw error
   }
-
-  if (loudnessTarget !== 'off') {
-    // Dynamics compressor for peak control before the gain stage
-    const compressor = ctx.createDynamicsCompressor()
-    compressor.threshold.value = -24
-    compressor.knee.value      = 10
-    compressor.ratio.value     = 8
-    compressor.attack.value    = 0.003
-    compressor.release.value   = 0.25
-    last.connect(compressor)
-    last = compressor
-
-    // Fixed-gain loudness approximation: assumes source is -18 LUFS (typical speech)
-    // and applies the gain delta to reach the chosen preset. This is a one-pass
-    // approximation; the FFmpeg loudnorm path provides a more accurate measurement.
-    const gainNode = ctx.createGain()
-    const sourceLufs = -18
-    const preset     = LOUDNESS_PRESETS.find(p => p.key === loudnessTarget)
-    const gainDb     = preset ? (preset.lufs - sourceLufs) : 0
-    gainNode.gain.value = Math.pow(10, gainDb / 20)
-    last.connect(gainNode)
-    last = gainNode
-  }
-
-  last.connect(dest)
-  return { ctx, source, audioEl, dest }
 }
 
 export async function exportVideoWithCaptions({
@@ -141,12 +147,30 @@ export async function exportVideoWithCaptions({
   removeSilence  = false,
   loudnessTarget = 'off',
   denoiseAudio   = false,
+  hasAudio       = true,
+  stripMetadata  = true,
+  onPhase,
 }: ExportOptions): Promise<Blob> {
 
   if (videoElement.videoWidth === 0 && videoElement.videoHeight === 0) {
     throw new Error(
       'This file has no video track. Video export is not available for audio-only files. Use the transcript panel to download your transcript as TXT, SRT, or VTT.'
     )
+  }
+  if (typeof MediaRecorder === 'undefined' || typeof HTMLCanvasElement.prototype.captureStream !== 'function') {
+    throw new Error('This browser does not support canvas video export. Use a current browser with MediaRecorder and canvas capture support.')
+  }
+  if (!Number.isFinite(trimStart) || trimStart < 0) {
+    throw new Error('The export start time is invalid. Adjust the trim range and retry.')
+  }
+  if (trimEnd !== null && (!Number.isFinite(trimEnd) || trimEnd <= trimStart)) {
+    throw new Error('The export trim range is invalid. Choose an end time after the start time.')
+  }
+  if (targetWidth !== null && targetWidth !== undefined && (!Number.isInteger(targetWidth) || targetWidth <= 0)) {
+    throw new Error('The export width is invalid. Choose a supported output ratio.')
+  }
+  if (targetHeight !== null && targetHeight !== undefined && (!Number.isInteger(targetHeight) || targetHeight <= 0)) {
+    throw new Error('The export height is invalid. Choose a supported output ratio.')
   }
 
   // ── Pre-load watermark image (async, before Promise) ──────────────────
@@ -159,6 +183,9 @@ export async function exportVideoWithCaptions({
       img.onerror = () => { URL.revokeObjectURL(wmUrl); res(null) }
       img.src = wmUrl
     })
+    if (!wmImage) {
+      throw new Error('The watermark image could not be loaded. Choose a supported image file and retry.')
+    }
   }
 
   // ── Build skip ranges (absolute video time) ────────────────────────────
@@ -172,12 +199,11 @@ export async function exportVideoWithCaptions({
   ]
 
   // Build the audio processing chain before the Promise so AudioWorklet.addModule()
-  // can be awaited. Null when setup fails (video-only export continues normally).
+  // can be awaited. Audio setup errors must remain visible to the user.
   let audioBundle: AudioBundle | null = null
-  try {
+  onPhase?.('Preparing audio...')
+  if (hasAudio) {
     audioBundle = await buildAudioChain(videoElement.src, denoiseAudio, loudnessTarget)
-  } catch (e) {
-    console.warn('[CalmClip] Audio chain setup failed, exporting video-only:', (e as Error).message)
   }
 
   return new Promise((resolve, reject) => {
@@ -219,7 +245,6 @@ export async function exportVideoWithCaptions({
     const canvasStream = canvas.captureStream(30)
 
     // Add pre-built audio tracks to the canvas capture stream.
-    // audioBundle is null when setup failed; export continues as video-only.
     if (audioBundle) {
       audioBundle.dest.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t))
     }
@@ -231,36 +256,88 @@ export async function exportVideoWithCaptions({
         ? 'video/webm;codecs=vp9'
         : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
           ? 'video/webm;codecs=vp8'
-          : 'video/webm'
+          : MediaRecorder.isTypeSupported('video/webm')
+            ? 'video/webm'
+            : ''
+    if (!mimeType) {
+      canvasStream.getTracks().forEach(track => track.stop())
+      if (audioBundle) {
+        void audioBundle.ctx.close()
+        audioBundle.audioEl.pause()
+        audioBundle.audioEl.src = ''
+        audioBundle.audioEl.load()
+      }
+      throw new Error('This browser cannot encode WebM video. Use a current browser with MediaRecorder support.')
+    }
 
-    const recorder = new MediaRecorder(canvasStream, {
-      mimeType,
-      videoBitsPerSecond: 8_000_000,
-    })
+    let recorder: MediaRecorder
+    try {
+      recorder = new MediaRecorder(canvasStream, {
+        mimeType,
+        videoBitsPerSecond: 8_000_000,
+      })
+    } catch (error) {
+      canvasStream.getTracks().forEach(track => track.stop())
+      if (audioBundle) void audioBundle.ctx.close()
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`Video recorder setup failed: ${message}`)
+    }
 
     const chunks: Blob[] = []
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
 
-    // Shared cleanup: called from both the success path (onstop) and all rejection
-    // paths so the AudioContext and audio element are always released.
-    function cleanupAudio(): void {
-      if (!audioBundle) return
-      try {
-        audioBundle.source.disconnect()
-        audioBundle.ctx.close()
+    let settled   = false
+    let stopTimer: ReturnType<typeof setTimeout> | null = null
+
+    function cleanup(): void {
+      if (stopTimer !== null) {
+        clearTimeout(stopTimer)
+        stopTimer = null
+      }
+      video.onloadeddata = null
+      video.onseeked = null
+      video.onended = null
+      video.onerror = null
+      video.pause()
+      video.src = ''
+      video.load()
+      canvasStream.getTracks().forEach(track => track.stop())
+      if (audioBundle) {
+        try { audioBundle.source.disconnect() } catch { /* cleanup is best effort */ }
+        try { void audioBundle.ctx.close() } catch { /* cleanup is best effort */ }
         audioBundle.audioEl.pause()
         audioBundle.audioEl.src = ''
         audioBundle.audioEl.load()
-      } catch (_) {}
+      }
     }
 
     recorder.onstop = () => {
-      cleanupAudio()
-      resolve(new Blob(chunks, { type: mimeType }))
+      if (settled) return
+      settled = true
+      cleanup()
+      const recorded = new Blob(chunks, { type: mimeType })
+      if (recorded.size === 0) {
+        reject(new Error('The video recorder produced an empty file. Try a shorter clip or a lower output resolution.'))
+        return
+      }
+      onPhase?.(stripMetadata ? 'Removing metadata...' : 'Finalizing video...')
+      const finalized = stripMetadata
+        ? stripMetadataFromWebm(recorded)
+        : Promise.resolve(recorded)
+      finalized.then(blob => {
+        if (blob.size === 0) {
+          throw new Error('The finalized export is empty. The video cannot be downloaded safely.')
+        }
+        resolve(blob)
+      }).catch(error => {
+        reject(error instanceof Error ? error : new Error(String(error)))
+      })
     }
 
     recorder.onerror = (e) => {
-      cleanupAudio()
+      if (settled) return
+      settled = true
+      cleanup()
       reject(new Error(
         'MediaRecorder error: ' +
         ((e as Event & { error?: { message?: string } }).error?.message || 'unknown')
@@ -351,6 +428,16 @@ export async function exportVideoWithCaptions({
       ctx.restore()
     }
 
+    function failExport(error: unknown): void {
+      if (settled) return
+      settled = true
+      cleanup()
+      if (recorder.state !== 'inactive') {
+        try { recorder.stop() } catch { /* recorder is already failing */ }
+      }
+      reject(error instanceof Error ? error : new Error(String(error)))
+    }
+
     // ── Main export loop ────────────────────────────────────────────────
     video.onloadeddata = () => {
       const totalDuration  = video.duration
@@ -362,25 +449,30 @@ export async function exportVideoWithCaptions({
       let isSeeking = false
 
       function finishExport() {
-        if (finished) return
+        if (finished || settled) return
         finished = true
         onProgress?.(1)
         video.pause()
         if (audioBundle) { audioBundle.audioEl.pause() }
-        setTimeout(() => {
+        stopTimer = setTimeout(() => {
           if (recorder.state === 'recording') recorder.stop()
-          video.src = ''
-          video.load()
         }, 350)
       }
 
       video.onseeked = () => {
         video.onseeked = null
-        recorder.start(100)
+        try {
+          recorder.start(100)
+        } catch (error) {
+          failExport(error)
+          return
+        }
 
         if (audioBundle) {
           audioBundle.audioEl.currentTime = clipStart
-          audioBundle.ctx.resume().then(() => audioBundle!.audioEl.play().catch(() => {}))
+          audioBundle.ctx.resume()
+            .then(() => audioBundle!.audioEl.play())
+            .catch(failExport)
         }
 
         let lastProgress = 0
@@ -444,7 +536,7 @@ export async function exportVideoWithCaptions({
 
         video.play().then(() => {
           requestAnimationFrame(renderFrame)
-        }).catch(err => { cleanupAudio(); reject(err instanceof Error ? err : new Error(String(err))) })
+        }).catch(failExport)
 
         video.onended = finishExport
       }
@@ -453,6 +545,6 @@ export async function exportVideoWithCaptions({
       video.currentTime = clipStart
     }
 
-    video.onerror = () => { cleanupAudio(); reject(new Error('Failed to load video for export')) }
+    video.onerror = () => failExport(new Error('Failed to load video for export. The source may use an unsupported codec.'))
   })
 }

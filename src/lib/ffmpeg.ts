@@ -300,6 +300,19 @@ export function acquireFfmpegLock(): void {
   _ffWorkerBusy = true
 }
 
+// Wait for another local FFmpeg operation to finish before starting a task.
+// Canvas export uses this at finalization so a concurrent analysis cannot make
+// an otherwise-complete export fail at the last step.
+export async function waitForFfmpegAvailable(timeoutMs = 5 * 60_000): Promise<void> {
+  const startedAt = Date.now()
+  while (isFFmpegBusy()) {
+    if (Date.now() - startedAt >= timeoutMs) {
+      throw new Error('Another video processing task is still running. Export could not remove metadata safely; wait for it to finish and retry.')
+    }
+    await new Promise<void>(resolve => setTimeout(resolve, 100))
+  }
+}
+
 // Release the FFmpeg task lock.
 export function releaseFfmpegLock(): void {
   _ffWorkerBusy = false
@@ -320,6 +333,44 @@ export function resetFfmpeg(): void {
 }
 
 export { fetchFile }
+
+export async function stripMetadataFromWebm(blob: Blob): Promise<Blob> {
+  await waitForFfmpegAvailable()
+  acquireFfmpegLock()
+  const inputName  = 'sanitize-input.webm'
+  const outputName = 'sanitize-output.webm'
+
+  try {
+    const ff = await loadFfmpeg()
+    await ff.writeFile(inputName, await fetchFile(blob))
+    await runFfmpegWithWatchdog(ff, [
+      '-i', inputName,
+      '-map', '0',
+      '-c', 'copy',
+      '-map_metadata', '-1',
+      '-map_chapters', '-1',
+      '-y', outputName,
+    ])
+
+    const result = await ff.readFile(outputName) as Uint8Array
+    if (!result || result.byteLength === 0) {
+      throw new Error('Metadata stripping produced an empty video. The export cannot be downloaded safely.')
+    }
+    const copy = new Uint8Array(result.byteLength)
+    copy.set(result)
+    return new Blob([copy.buffer], { type: 'video/webm' })
+  } finally {
+    try {
+      const ff = _ff
+      if (ff) {
+        ff.deleteFile(inputName).catch(() => {})
+        ff.deleteFile(outputName).catch(() => {})
+      }
+    } finally {
+      releaseFfmpegLock()
+    }
+  }
+}
 
 export type Ratio         = '16:9' | '9:16' | '1:1' | '4:5'
 export type CropMode      = 'fit' | 'fill'

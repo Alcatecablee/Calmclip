@@ -10,6 +10,7 @@ import type { WatermarkConfig } from '@/components/WatermarkPanel'
 import type { SilenceSegment }  from '@/lib/silenceCutter'
 import type { CropMode }        from '@/lib/ffmpeg'
 import type { LoudnessTarget }  from '@/lib/loudness'
+import { validateExport }       from '@/lib/exportHandlers'
 
 const RATIO_PRESETS = [
   { label: '16:9',      desc: 'Landscape',           w: 1920, h: 1080 },
@@ -55,9 +56,13 @@ interface Props {
   ratio:           string
   onRatioChange:   (r: string) => void
   fillerCuts?:     SilenceSegment[]
+  fileSize?:       number
+  duration?:       number
+  stripMeta?:      boolean
   onExported?:     (size: number) => void
   loudnessTarget?: LoudnessTarget
   denoiseAudio?:   boolean
+  hasAudio?:       boolean
   onProGate?:      () => void
   isPro?:          boolean
 }
@@ -77,16 +82,21 @@ export default function ExportPanel({
   ratio,
   onRatioChange,
   fillerCuts = [],
+  fileSize = 0,
+  duration = 0,
+  stripMeta = true,
   onExported,
   loudnessTarget = 'off',
   denoiseAudio   = false,
+  hasAudio       = true,
   onProGate: _onProGate,
   isPro          = false,
 }: Props) {
-  const [phase, setPhase]             = useState<'idle' | 'processing' | 'done'>('idle')
+  const [phase, setPhase]             = useState<'idle' | 'processing' | 'done' | 'error'>('idle')
   const [progress, setProgress]       = useState(0)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [error, setError]             = useState<string | null>(null)
+  const [phaseLabel, setPhaseLabel]   = useState('Rendering video...')
 
   useEffect(() => {
     return () => { if (downloadUrl) URL.revokeObjectURL(downloadUrl) }
@@ -100,11 +110,27 @@ export default function ExportPanel({
     setPhase('processing')
     setProgress(0)
     setError(null)
+    setPhaseLabel('Preparing export...')
     if (downloadUrl) { URL.revokeObjectURL(downloadUrl); setDownloadUrl(null) }
 
     const preset = RATIO_PRESETS.find(p => p.label === ratio) || RATIO_PRESETS[4]
 
     const allManualCuts = [...manualCuts, ...fillerCuts]
+    const validationError = validateExport({
+      file:          { size: fileSize },
+      trimStart:     trimStart ?? 0,
+      trimEnd:       trimEnd ?? 0,
+      duration:      duration ?? 0,
+      silenceSegs:   silenceSegs || [],
+      removeSilence: removeSilence ?? false,
+      manualCuts:    allManualCuts,
+      blurRegions:   blurRegions || [],
+    })
+    if (validationError) {
+      setError(validationError.message)
+      setPhase('error')
+      return
+    }
 
     // Free users: cap to 720p (short side max 720px). Pro users: use full preset dimensions.
     let exportW: number | null = preset.w
@@ -132,6 +158,9 @@ export default function ExportPanel({
         removeSilence:  removeSilence ?? false,
         loudnessTarget,
         denoiseAudio,
+        hasAudio,
+        stripMetadata:  stripMeta,
+        onPhase:        setPhaseLabel,
         onProgress:     (p) => setProgress(Math.round(p * 100)),
       })
       const url = URL.createObjectURL(blob)
@@ -143,8 +172,8 @@ export default function ExportPanel({
       setPhase('done')
       onExported?.(blob.size)
     } catch (e) {
-      setError((e as Error).message || 'Export failed. Please try again.')
-      setPhase('idle')
+      setError(e instanceof Error ? e.message : 'Export failed. Please try again.')
+      setPhase('error')
     }
   }
 
@@ -158,7 +187,7 @@ export default function ExportPanel({
 
   return (
     <div className="space-y-3">
-      {phase === 'idle' && (
+      {(phase === 'idle' || phase === 'error') && (
         <>
           <div className="space-y-1.5">
             <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>Output Ratio</p>
@@ -227,7 +256,7 @@ export default function ExportPanel({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--primary)' }} />
-            <span style={{ color: 'var(--text-muted)' }}>Rendering video...</span>
+            <span style={{ color: 'var(--text-muted)' }}>{phaseLabel}</span>
           </div>
           <Progress value={progress} className="h-2" />
           <p className="text-[10px] text-center" style={{ color: 'var(--text-faint)' }}>{progress}%</p>
@@ -255,7 +284,7 @@ export default function ExportPanel({
         </div>
       )}
 
-      {error && (
+      {phase === 'error' && error && (
         <div className="flex items-center gap-2 text-xs" style={{ color: '#ef4444' }}>
           <AlertCircle className="w-3 h-3" />
           {error}
