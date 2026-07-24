@@ -3,7 +3,7 @@
  *
  * Draws video frames + captions onto an offscreen canvas, captured via MediaRecorder.
  * Audio is pulled from the original video element's src using a separate Audio element
- * routed through Web Audio API — avoids InvalidStateError from double-connecting.
+ * routed through Web Audio API, avoiding InvalidStateError from double-connecting.
  *
  * Features applied during export to match the live preview:
  *   - Crop mode  (fit = letterbox/pillarbox, fill = cover crop)
@@ -182,7 +182,7 @@ export async function exportVideoWithCaptions({
 
   return new Promise((resolve, reject) => {
     // Use a fresh video clone for frame rendering.
-    // Do NOT set crossOrigin — the src is a blob URL (same-origin) and crossOrigin
+    // Do NOT set crossOrigin: the src is a blob URL (same-origin) and crossOrigin
     // causes the browser to issue a CORS request that blob URLs cannot satisfy.
     const video = document.createElement('video')
     video.src       = videoElement.src
@@ -287,7 +287,7 @@ export async function exportVideoWithCaptions({
 
     /**
      * Draw blur regions as pixelated blocks over the already-rendered frame.
-     * Coordinates are 0–100% of the output canvas (top-left origin),
+     * Coordinates are 0 to 100% of the output canvas (top-left origin),
      * matching the BlurRegionOverlay coordinate system in the preview.
      */
     function drawBlurRegions() {
@@ -303,7 +303,7 @@ export async function exportVideoWithCaptions({
         if (bw <= 0 || bh <= 0) continue
 
         // Downscale the region to a tiny resolution, then upscale without
-        // smoothing — produces a pixelation/mosaic blur effect.
+        // smoothing, producing a pixelation/mosaic blur effect.
         const tW = Math.max(1, Math.round(bw / PIXEL_SIZE))
         const tH = Math.max(1, Math.round(bh / PIXEL_SIZE))
         pixCanvas.width  = tW
