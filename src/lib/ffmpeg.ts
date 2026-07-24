@@ -355,7 +355,7 @@ function buildAudioFilter(loudnessTarget: LoudnessTarget, denoiseAudio: boolean)
   const loud  = loudnormFilter(loudnessTarget)
   const parts = [
     // afftdn with tn=1 (real-time noise tracking) does NOT require a large
-    // look-ahead buffer — it estimates the noise floor continuously from
+    // look-ahead buffer: it estimates the noise floor continuously from
     // incoming audio, so the muxer sync issue that affects the two-pass loudnorm
     // filter does not apply here. nr=12 gives moderate reduction (12 dB) that
     // removes hiss, fans, and AC noise without audible artefacts on speech.
@@ -800,7 +800,7 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
       // Pull the audio filter chain into the filter_complex graph.
       // Using a separate -af alongside -filter_complex causes loudnorm (linear
       // mode) to buffer the entire audio stream before outputting, which stalls
-      // the muxer while video frames are ready — leaving the export at 0%.
+      // the muxer while video frames are ready, leaving the export at 0%.
       // Keeping everything in one graph lets FFmpeg schedule audio/video together.
       // When an audio filter is present, route [0:a] through the filter_complex
       // graph and map the named output pad. When no filter is needed, map the

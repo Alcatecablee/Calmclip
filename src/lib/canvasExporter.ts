@@ -39,7 +39,90 @@ interface ExportOptions {
   denoiseAudio?:   boolean
 }
 
-type AudioVideoEl = HTMLVideoElement & { _audioEl?: HTMLAudioElement }
+// ── Audio chain types and builder ────────────────────────────────────────
+
+interface AudioBundle {
+  ctx:     AudioContext
+  source:  MediaElementAudioSourceNode
+  audioEl: HTMLAudioElement
+  dest:    MediaStreamAudioDestinationNode
+}
+
+/**
+ * Builds the Web Audio processing chain for export.
+ *
+ * When denoise=true, loads the spectral subtraction AudioWorklet processor
+ * (/denoise-processor.js). The worklet applies minimum-statistics noise floor
+ * tracking and per-bin spectral subtraction, removing broadband noise (fans,
+ * AC hum, room noise) across all frequencies including the speech band.
+ *
+ * Falls back to a simple 80 Hz high-pass filter if the worklet fails to load
+ * (e.g. older browsers). When loudnessTarget is set, applies a DynamicsCompressor
+ * and fixed-gain normalization approximating the chosen LUFS target.
+ *
+ * Called before the export Promise so AudioWorklet.addModule() can be awaited.
+ */
+async function buildAudioChain(
+  src:            string,
+  denoise:        boolean,
+  loudnessTarget: LoudnessTarget,
+): Promise<AudioBundle> {
+  const audioEl = new Audio()
+  audioEl.src   = src
+  audioEl.muted = false
+
+  const ctx    = new AudioContext()
+  const source = ctx.createMediaElementSource(audioEl)
+  const dest   = ctx.createMediaStreamDestination()
+
+  let last: AudioNode = source
+
+  if (denoise) {
+    try {
+      // Spectral subtraction processor: FFT_SIZE=512, HOP_SIZE=128, 4x overlap.
+      // Tracks the noise floor via per-bin running minimum over ~260 ms and
+      // subtracts it from each frame, suppressing continuous background noise.
+      await ctx.audioWorklet.addModule('/denoise-processor.js')
+      const denoiseNode = new AudioWorkletNode(ctx, 'calmclip-denoise')
+      last.connect(denoiseNode)
+      last = denoiseNode
+    } catch {
+      // AudioWorklet unavailable or module failed to load: fall back to a
+      // high-pass filter that removes sub-80 Hz rumble (handling noise, room tone).
+      const hp = ctx.createBiquadFilter()
+      hp.type            = 'highpass'
+      hp.frequency.value = 80
+      last.connect(hp)
+      last = hp
+    }
+  }
+
+  if (loudnessTarget !== 'off') {
+    // Dynamics compressor for peak control before the gain stage
+    const compressor = ctx.createDynamicsCompressor()
+    compressor.threshold.value = -24
+    compressor.knee.value      = 10
+    compressor.ratio.value     = 8
+    compressor.attack.value    = 0.003
+    compressor.release.value   = 0.25
+    last.connect(compressor)
+    last = compressor
+
+    // Fixed-gain loudness approximation: assumes source is -18 LUFS (typical speech)
+    // and applies the gain delta to reach the chosen preset. This is a one-pass
+    // approximation; the FFmpeg loudnorm path provides a more accurate measurement.
+    const gainNode = ctx.createGain()
+    const sourceLufs = -18
+    const preset     = LOUDNESS_PRESETS.find(p => p.key === loudnessTarget)
+    const gainDb     = preset ? (preset.lufs - sourceLufs) : 0
+    gainNode.gain.value = Math.pow(10, gainDb / 20)
+    last.connect(gainNode)
+    last = gainNode
+  }
+
+  last.connect(dest)
+  return { ctx, source, audioEl, dest }
+}
 
 export async function exportVideoWithCaptions({
   videoElement,
@@ -88,6 +171,15 @@ export async function exportVideoWithCaptions({
       : []),
   ]
 
+  // Build the audio processing chain before the Promise so AudioWorklet.addModule()
+  // can be awaited. Null when setup fails (video-only export continues normally).
+  let audioBundle: AudioBundle | null = null
+  try {
+    audioBundle = await buildAudioChain(videoElement.src, denoiseAudio, loudnessTarget)
+  } catch (e) {
+    console.warn('[CalmClip] Audio chain setup failed, exporting video-only:', (e as Error).message)
+  }
+
   return new Promise((resolve, reject) => {
     // Use a fresh video clone for frame rendering.
     // Do NOT set crossOrigin — the src is a blob URL (same-origin) and crossOrigin
@@ -121,72 +213,10 @@ export async function exportVideoWithCaptions({
 
     const canvasStream = canvas.captureStream(30)
 
-    // ── Audio capture ───────────────────────────────────────────────────
-    let audioCtx:    AudioContext | null                 = null
-    let audioSource: MediaElementAudioSourceNode | null = null
-
-    try {
-      const audioEl  = new Audio()
-      audioEl.src    = videoElement.src
-      audioEl.muted  = false
-
-      audioCtx    = new AudioContext()
-      audioSource = audioCtx.createMediaElementSource(audioEl)
-      const audioDest = audioCtx.createMediaStreamDestination()
-
-      // Build processing chain: source → [denoise] → [compressor + gain] → dest
-      let lastNode: AudioNode = audioSource
-
-      if (denoiseAudio) {
-        // Sub-80 Hz rumble removal (handling noise, room tone low-end)
-        const hp = audioCtx.createBiquadFilter()
-        hp.type = 'highpass'
-        hp.frequency.value = 80
-        lastNode.connect(hp)
-        lastNode = hp
-
-        // Noise gate: strongly compress content below the noise floor threshold
-        // so that background hiss/hum during pauses is suppressed. High ratio
-        // (20:1) acts as a gate; fast attack + moderate release preserves
-        // speech transients while clamping steady-state noise.
-        const noiseGate = audioCtx.createDynamicsCompressor()
-        noiseGate.threshold.value = -48  // dBFS — below this is treated as noise
-        noiseGate.knee.value      = 30   // soft knee to avoid abrupt cut-offs
-        noiseGate.ratio.value     = 20   // near-gate compression ratio
-        noiseGate.attack.value    = 0.003
-        noiseGate.release.value   = 0.2
-        lastNode.connect(noiseGate)
-        lastNode = noiseGate
-      }
-
-      if (loudnessTarget !== 'off') {
-        const compressor = audioCtx.createDynamicsCompressor()
-        compressor.threshold.value = -24
-        compressor.knee.value      = 10
-        compressor.ratio.value     = 8
-        compressor.attack.value    = 0.003
-        compressor.release.value   = 0.25
-        lastNode.connect(compressor)
-        lastNode = compressor
-
-        const gainNode = audioCtx.createGain()
-        // Approximate: assume source content is ~-18 LUFS (typical speech);
-        // apply gain delta to reach the preset target.
-        const sourceLufs = -18
-        const preset = LOUDNESS_PRESETS.find(p => p.key === loudnessTarget)
-        const gainDb = preset ? (preset.lufs - sourceLufs) : 0
-        gainNode.gain.value = Math.pow(10, gainDb / 20)
-        lastNode.connect(gainNode)
-        lastNode = gainNode
-      }
-
-      lastNode.connect(audioDest)
-      audioDest.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t))
-
-      ;(video as AudioVideoEl)._audioEl = audioEl
-    } catch (e) {
-      console.warn('Audio capture unavailable, exporting video-only:', (e as Error).message)
-      if (audioCtx) { audioCtx.close(); audioCtx = null }
+    // Add pre-built audio tracks to the canvas capture stream.
+    // audioBundle is null when setup failed; export continues as video-only.
+    if (audioBundle) {
+      audioBundle.dest.stream.getAudioTracks().forEach(t => canvasStream.addTrack(t))
     }
 
     // ── MediaRecorder ───────────────────────────────────────────────────
@@ -207,8 +237,14 @@ export async function exportVideoWithCaptions({
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
 
     recorder.onstop = () => {
-      if (audioCtx) {
-        try { audioSource?.disconnect(); audioCtx.close() } catch (_) {}
+      if (audioBundle) {
+        try {
+          audioBundle.source.disconnect()
+          audioBundle.ctx.close()
+          audioBundle.audioEl.pause()
+          audioBundle.audioEl.src = ''
+          audioBundle.audioEl.load()
+        } catch (_) {}
       }
       resolve(new Blob(chunks, { type: mimeType }))
     }
@@ -317,8 +353,7 @@ export async function exportVideoWithCaptions({
         finished = true
         onProgress?.(1)
         video.pause()
-        const audioEl = (video as AudioVideoEl)._audioEl
-        if (audioEl) { audioEl.pause(); audioEl.src = ''; audioEl.load() }
+        if (audioBundle) { audioBundle.audioEl.pause() }
         setTimeout(() => {
           if (recorder.state === 'recording') recorder.stop()
           video.src = ''
@@ -330,8 +365,10 @@ export async function exportVideoWithCaptions({
         video.onseeked = null
         recorder.start(100)
 
-        const audioEl = (video as AudioVideoEl)._audioEl
-        if (audioEl) { audioEl.currentTime = clipStart; audioEl.play().catch(() => {}) }
+        if (audioBundle) {
+          audioBundle.audioEl.currentTime = clipStart
+          audioBundle.ctx.resume().then(() => audioBundle!.audioEl.play().catch(() => {}))
+        }
 
         let lastProgress = 0
 
@@ -353,8 +390,8 @@ export async function exportVideoWithCaptions({
               isSeeking = true
               video.onseeked = () => {
                 video.onseeked = null
-                // Re-sync audio to the new position
-                if (audioEl) audioEl.currentTime = skipTo
+                // Re-sync audio to the new video position
+                if (audioBundle) audioBundle.audioEl.currentTime = skipTo
                 isSeeking = false
                 requestAnimationFrame(renderFrame)
               }
