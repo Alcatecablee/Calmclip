@@ -385,6 +385,12 @@ export function drawCaptions(
     : group.words.map(w => w.text)
 
   ctx.save()
+  // Explicitly set text properties so layout is deterministic regardless of
+  // prior canvas state. textAlign 'left' ensures curX-based placement is
+  // correct for all scripts. textBaseline 'alphabetic' matches the lineBaseY
+  // calculation (cap-height offset used for background box geometry).
+  ctx.textAlign    = 'left'
+  ctx.textBaseline = 'alphabetic'
   ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
 
   // Measure every word before layout
@@ -474,23 +480,9 @@ export function drawCaptions(
 
       ctx.save()
 
-      // Per-word background box: active word uses highlightColor, others use bgColor
-      if (style.bgEnabled && style.bgPerWord) {
-        const boxX = curX - wordPad
-        const boxY = lineBaseY - style.fontSize * 0.85 - wordPad * 0.5
-        const boxW = wm.width + wordPad * 2
-        const boxH = style.fontSize * 1.25 + wordPad
-        ctx.fillStyle = isActive ? style.highlightColor : style.bgColor
-        if (style.bgRadius > 0) {
-          ctx.beginPath()
-          ctx.roundRect(boxX, boxY, boxW, boxH, style.bgRadius)
-          ctx.fill()
-        } else {
-          ctx.fillRect(boxX, boxY, boxW, boxH)
-        }
-      }
-
-      // Animation transform on the active word
+      // Apply animation transforms and alpha FIRST so that the per-word
+      // background box (drawn below) moves and scales with the text rather than
+      // remaining anchored at the pre-animation position.
       if (isActive) {
         if (style.animation === 'scale') {
           const scale = 1 + 0.15 * Math.sin(animationProgress * Math.PI)
@@ -500,6 +492,7 @@ export function drawCaptions(
         } else if (style.animation === 'bounce') {
           ctx.translate(0, -8 * Math.sin(animationProgress * Math.PI))
         } else if (style.animation === 'fade') {
+          // Alpha applied before box so both box and text fade in together.
           ctx.globalAlpha = Math.min(1, animationProgress * 4)
         } else if (style.animation === 'shake') {
           const intensity = 3 * (1 - Math.min(1, animationProgress * 2))
@@ -517,33 +510,53 @@ export function drawCaptions(
         }
       }
 
-      // Shadow
+      // Per-word background box drawn in the already-animated coordinate space
+      // so it travels with the text on every animation type.
+      if (style.bgEnabled && style.bgPerWord) {
+        const boxX = curX - wordPad
+        const boxY = lineBaseY - style.fontSize * 0.85 - wordPad * 0.5
+        const boxW = wm.width + wordPad * 2
+        const boxH = style.fontSize * 1.25 + wordPad
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur  = 0
+        ctx.fillStyle = isActive ? style.highlightColor : style.bgColor
+        if (style.bgRadius > 0) {
+          ctx.beginPath()
+          ctx.roundRect(boxX, boxY, boxW, boxH, style.bgRadius)
+          ctx.fill()
+        } else {
+          ctx.fillRect(boxX, boxY, boxW, boxH)
+        }
+      }
+
+      // Shadow applied before stroke so it halos the stroke outline.
+      // Cleared before fill so the fill layer has no double-shadow.
       ctx.shadowColor    = isActive ? style.shadowColor : 'rgba(0,0,0,0.5)'
       ctx.shadowBlur     = isActive ? style.shadowBlur  : style.shadowBlur * 0.5
       ctx.shadowOffsetX  = 0
       ctx.shadowOffsetY  = 2
 
-      // Stroke (drawn before fill so fill renders on top)
+      // Stroke drawn before fill so the fill paints over the stroke interior,
+      // producing a clean outline without fill-color leaking through.
+      // Font is inherited from the outer ctx.save() -- no need to reset it.
       if (style.strokeWidth > 0 && style.strokeColor !== 'transparent') {
         ctx.strokeStyle = style.strokeColor
         ctx.lineWidth   = style.strokeWidth
         ctx.lineJoin    = 'round'
         ctx.miterLimit  = 2
-        ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
         ctx.strokeText(wm.text, curX, lineBaseY)
       }
 
-      // Fill: when bgPerWord is active, the box handles highlighting so text
-      // always uses the base color for maximum contrast against the box.
+      // Fill: when bgPerWord is active the colored box conveys the highlight,
+      // so text always uses the base color for legibility against the box.
       ctx.shadowColor = 'transparent'
       const fillColor = (style.bgEnabled && style.bgPerWord)
         ? style.color
         : (isActive ? style.highlightColor : style.color)
       ctx.fillStyle = fillColor
-      ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
       ctx.fillText(wm.text, curX, lineBaseY)
 
-      // Neon glow: extra luminous pass on active word
+      // Neon glow: extra luminous pass on the active word.
       if (isActive && style.animation === 'glow') {
         ctx.shadowColor = style.highlightColor
         ctx.shadowBlur  = 30 + 10 * Math.sin(animationProgress * Math.PI * 2)
@@ -553,7 +566,7 @@ export function drawCaptions(
         ctx.globalAlpha = 1
       }
 
-      // RGB split glitch: chromatic aberration on active word
+      // RGB split glitch: chromatic aberration on the active word.
       if (isActive && style.animation === 'glitch') {
         const offset = 3 + 2 * Math.abs(Math.sin(animationProgress * Math.PI * 6))
         ctx.shadowColor = 'transparent'
