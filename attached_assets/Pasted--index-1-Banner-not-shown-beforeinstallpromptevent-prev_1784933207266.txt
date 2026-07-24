@@ -1,0 +1,73 @@
+(index):1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+ [CalmClip] execOrThrow: calling ff.exec with args: -i sanitize-input.webm -map 0 -c copy -map_metadata -1 -map_chapters -1 -y sanitize-output.webm
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] ffmpeg version 5.1.4 Copyright (c) 2000-2023 the FFmpeg developers
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   built with emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.40 (5c27e79dd0a9c4e27ef2326841698cdd4f6b5784)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   configuration: --target-os=none --arch=x86_32 --enable-cross-compile --disable-asm --disable-stripping --disable-programs --disable-doc --disable-debug --disable-runtime-cpudetect --disable-autodetect --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc --extra-cflags='-I/opt/include -O3 -msimd128 -sUSE_PTHREADS -pthread' --extra-cxxflags='-I/opt/include -O3 -msimd128 -sUSE_PTHREADS -pthread' --enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libopus --enable-zlib --enable-libwebp --enable-libfreetype --enable-libfribidi --enable-libass --enable-libzimg
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavutil      57. 28.100 / 57. 28.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavcodec     59. 37.100 / 59. 37.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavformat    59. 27.100 / 59. 27.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavdevice    59.  7.100 / 59.  7.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavfilter     8. 44.100 /  8. 44.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libswscale      6.  7.100 /  6.  7.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libswresample   4.  7.100 /  4.  7.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libpostproc    56.  6.100 / 56.  6.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Input #0, matroska,webm, from 'sanitize-input.webm':
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Metadata:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]     encoder         : Chrome
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Duration: N/A, start: 0.000000, bitrate: N/A
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:0(eng): Video: vp9 (Profile 0), yuv420p(tv, smpte170m/unknown/unknown), 720x1280, SAR 1:1 DAR 9:16, 29.97 tbr, 1k tbn (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]     Metadata:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]       alpha_mode      : 1
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:1(eng): Audio: opus, 48000 Hz, stereo, fltp (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Output #0, webm, to 'sanitize-output.webm':
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Metadata:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]     encoder         : Lavf59.27.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:0: Video: vp9 (Profile 0), yuv420p(tv, smpte170m/unknown/unknown), 720x1280 [SAR 1:1 DAR 9:16], q=2-31, 29.97 tbr, 1k tbn (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:1: Audio: opus, 48000 Hz, stereo, fltp (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Stream mapping:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:0 -> #0:0 (copy)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:1 -> #0:1 (copy)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] frame=    1 fps=0.0 q=-1.0 size=       1kB time=00:00:00.00 bitrate=4664.0kbits/s speed=11.2x    
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] frame= 1184 fps=0.0 q=-1.0 Lsize=   25351kB time=00:01:32.43 bitrate=2246.7kbits/s speed= 234x    
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] video:24269kB audio:1005kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: 0.303633%
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Aborted()
+index-nR5vs5K-.js:9 [CalmClip] execOrThrow: ff.exec returned, exit code: 0
+index-nR5vs5K-.js:9 [CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload
+(index):1 Error in event handler: ReferenceError: start is not defined
+    at chrome-extension://kkhcpginfpcdlliciaalocbagagcgpao/js/cs.js:1:803
+index-nR5vs5K-.js:10 [CalmClip] loadFfmpeg: discarding dead WASM instance (Aborted() detected), reloading with ST core
+index-nR5vs5K-.js:9 [CalmClip] execOrThrow: calling ff.exec with args: -i sanitize-input.webm -map 0 -c copy -map_metadata -1 -map_chapters -1 -y sanitize-output.webm
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] ffmpeg version 5.1.4 Copyright (c) 2000-2023 the FFmpeg developers
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   built with emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.40 (5c27e79dd0a9c4e27ef2326841698cdd4f6b5784)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   configuration: --target-os=none --arch=x86_32 --enable-cross-compile --disable-asm --disable-stripping --disable-programs --disable-doc --disable-debug --disable-runtime-cpudetect --disable-autodetect --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc --extra-cflags='-I/opt/include -O3 -msimd128' --extra-cxxflags='-I/opt/include -O3 -msimd128' --disable-pthreads --disable-w32threads --disable-os2threads --enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libopus --enable-zlib --enable-libwebp --enable-libfreetype --enable-libfribidi --enable-libass --enable-libzimg
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavutil      57. 28.100 / 57. 28.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavcodec     59. 37.100 / 59. 37.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavformat    59. 27.100 / 59. 27.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavdevice    59.  7.100 / 59.  7.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libavfilter     8. 44.100 /  8. 44.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libswscale      6.  7.100 /  6.  7.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libswresample   4.  7.100 /  4.  7.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   libpostproc    56.  6.100 / 56.  6.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Input #0, matroska,webm, from 'sanitize-input.webm':
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Metadata:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]     encoder         : Chrome
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Duration: N/A, start: 0.000000, bitrate: N/A
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:0(eng): Video: vp9 (Profile 0), yuv420p(tv, smpte170m/unknown/unknown), 720x1280, SAR 1:1 DAR 9:16, 1k tbr, 1k tbn (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]     Metadata:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]       alpha_mode      : 1
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:1(eng): Audio: opus, 48000 Hz, stereo, fltp (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Output #0, webm, to 'sanitize-output.webm':
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Metadata:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]     encoder         : Lavf59.27.100
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:0: Video: vp9 (Profile 0), yuv420p(tv, smpte170m/unknown/unknown), 720x1280 [SAR 1:1 DAR 9:16], q=2-31, 1k tbr, 1k tbn (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:1: Audio: opus, 48000 Hz, stereo, fltp (default)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Stream mapping:
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:0 -> #0:0 (copy)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg]   Stream #0:1 -> #0:1 (copy)
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] frame=    1 fps=0.0 q=-1.0 size=       1kB time=00:00:00.00 bitrate=4600.0kbits/s speed=19.6x    
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] frame=   25 fps=0.0 q=-1.0 size=    1536kB time=00:02:29.97 bitrate=  83.9kbits/s speed= 281x    
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] frame=   58 fps=0.0 q=-1.0 Lsize=    2753kB time=00:03:10.19 bitrate= 118.6kbits/s speed= 275x    
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] video:1650kB audio:1078kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: 0.952733%
+index-nR5vs5K-.js:9 [CalmClip FFmpeg] Aborted()
+index-nR5vs5K-.js:9 [CalmClip] execOrThrow: ff.exec returned, exit code: 0
+index-nR5vs5K-.js:9 [CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload

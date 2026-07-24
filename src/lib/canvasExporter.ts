@@ -18,8 +18,140 @@ import type { BlurRegion }      from '../components/FaceBlurPanel'
 import type { WatermarkConfig } from '../components/WatermarkPanel'
 import type { SilenceSegment }  from './silenceCutter'
 import type { CropMode }        from './ffmpeg'
-import { stripMetadataFromWebm } from './ffmpeg'
 import { LOUDNESS_PRESETS, type LoudnessTarget } from './loudness'
+
+// ─── JavaScript-based WebM metadata stripper ─────────────────────────────────
+//
+// Strips identifying metadata from a MediaRecorder WebM blob by editing the
+// EBML container directly, without running FFmpeg. This avoids the FFmpeg
+// remux step that is unreliable for streaming WebM from Chrome's MediaRecorder:
+//
+//   - The multi-threaded WASM core fires Aborted() after every exec, marking
+//     the instance dead and forcing a reload on the next export.
+//   - The single-threaded core stops copying video frames when audio and video
+//     timestamps diverge significantly. This is a known artifact: the Web Audio
+//     API MediaStream timestamps are based on AudioContext.currentTime, which
+//     may be non-zero if the context was alive while FFmpeg WASM was loading.
+//     The muxer interleaver treats audio-ahead-of-video as a sync error and
+//     abandons video after only a few seconds, producing a file where only
+//     audio plays.
+//
+// A MediaRecorder WebM from Chrome contains no camera metadata (no GPS, no
+// device serial, no EXIF). The only identifying fields are MuxingApp and
+// WritingApp (both set to "Chrome") and DateUTC (the recording timestamp).
+// Zeroing those three fields satisfies the privacy invariant without touching
+// any frame data or the container structure.
+
+// EBML element IDs to zero out within SegmentInfo.
+const WEBM_META_IDS = new Set([
+  0x4D80,  // MuxingApp  (UTF-8)
+  0x5741,  // WritingApp (UTF-8)
+  0x7BA9,  // Title      (UTF-8)
+  0x4461,  // DateUTC    (signed int64)
+])
+const EBML_ID_HEADER   = 0x1A45DFA3
+const EBML_ID_SEGMENT  = 0x18538067
+const EBML_ID_SEG_INFO = 0x1549A966
+const EBML_ID_TRACKS   = 0x1654AE6B
+
+// Reads an EBML element ID (1-4 bytes). The full byte sequence including the
+// width-marker bit is the ID value.
+function ebmlReadId(a: Uint8Array, p: number): { id: number; n: number } | null {
+  if (p >= a.length) return null
+  const b = a[p]
+  const n = b >= 0x80 ? 1 : b >= 0x40 ? 2 : b >= 0x20 ? 3 : b >= 0x10 ? 4 : 0
+  if (n === 0 || p + n > a.length) return null
+  let id = 0
+  for (let i = 0; i < n; i++) id = id * 256 + a[p + i]
+  return { id, n }
+}
+
+// Reads an EBML element data size (1-8 bytes). The width-marker bit is stripped
+// from the value. Returns size=-1 for the unknown-size sentinel (used by
+// Segment in streaming/live WebM containers).
+function ebmlReadSize(a: Uint8Array, p: number): { size: number; n: number } | null {
+  if (p >= a.length) return null
+  const b = a[p]
+  let n: number, mask: number
+  if      (b >= 0x80) { n = 1; mask = 0x7F }
+  else if (b >= 0x40) { n = 2; mask = 0x3F }
+  else if (b >= 0x20) { n = 3; mask = 0x1F }
+  else if (b >= 0x10) { n = 4; mask = 0x0F }
+  else if (b >= 0x08) { n = 5; mask = 0x07 }
+  else if (b >= 0x04) { n = 6; mask = 0x03 }
+  else if (b >= 0x02) { n = 7; mask = 0x01 }
+  else                { n = 8; mask = 0x00 }
+  if (p + n > a.length) return null
+  let allSet = (b & mask) === mask
+  let size = b & mask
+  for (let i = 1; i < n; i++) {
+    allSet = allSet && a[p + i] === 0xFF
+    size = size * 256 + a[p + i]
+  }
+  return { size: allSet ? -1 : size, n }
+}
+
+// Modifies the Uint8Array in place, zeroing the content of WEBM_META_IDS
+// fields inside SegmentInfo. No-ops silently if the buffer is not valid WebM.
+function eraseWebmTagFields(a: Uint8Array): void {
+  // Skip EBML header
+  const h = ebmlReadId(a, 0)
+  if (!h || h.id !== EBML_ID_HEADER) return
+  let p = h.n
+  const hs = ebmlReadSize(a, p)
+  if (!hs || hs.size < 0) return
+  p += hs.n + hs.size
+
+  // Enter Segment (size may be -1 for streaming/live containers)
+  const seg = ebmlReadId(a, p)
+  if (!seg || seg.id !== EBML_ID_SEGMENT) return
+  p += seg.n
+  const ss = ebmlReadSize(a, p)
+  if (!ss) return
+  p += ss.n
+
+  // Scan Segment children; SegmentInfo always precedes Tracks and Clusters
+  const limit = Math.min(a.length, p + 131_072)
+  while (p < limit) {
+    const el = ebmlReadId(a, p)
+    if (!el) break
+    p += el.n
+    const esz = ebmlReadSize(a, p)
+    if (!esz) break
+    p += esz.n
+
+    if (el.id === EBML_ID_SEG_INFO && esz.size > 0) {
+      const end = p + esz.size
+      let ip = p
+      while (ip < end) {
+        const ie = ebmlReadId(a, ip)
+        if (!ie) break
+        ip += ie.n
+        const isz = ebmlReadSize(a, ip)
+        if (!isz || isz.size < 0) break
+        ip += isz.n
+        if (WEBM_META_IDS.has(ie.id) && isz.size > 0) {
+          a.fill(0, ip, ip + isz.size)
+        }
+        ip += isz.size
+      }
+      return
+    }
+
+    if (el.id === EBML_ID_TRACKS) return  // Passed SegmentInfo, stop
+    if (esz.size < 0) break               // Unknown-size non-Segment element
+    p += esz.size
+  }
+}
+
+// Strips identifying metadata from a WebM blob by editing the EBML container
+// in place. Fast (pure JS, no WASM), non-destructive to frame data.
+async function stripWebmMetadata(blob: Blob): Promise<Blob> {
+  const buf = await blob.arrayBuffer()
+  const arr = new Uint8Array(buf)
+  eraseWebmTagFields(arr)
+  return new Blob([arr], { type: blob.type })
+}
 
 interface ExportOptions {
   videoElement:    HTMLVideoElement
@@ -353,7 +485,7 @@ export async function exportVideoWithCaptions({
       }
       onPhase?.(stripMetadata ? 'Removing metadata...' : 'Finalizing video...')
       const finalized = stripMetadata
-        ? stripMetadataFromWebm(recorded)
+        ? stripWebmMetadata(recorded)
         : Promise.resolve(recorded)
       finalized.then(blob => {
         if (blob.size === 0) {
