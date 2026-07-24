@@ -1511,6 +1511,8 @@ export default function App() {
                                       [...manualCuts, ...fillerCuts],
                                       silenceSegs,
                                       removeSilence,
+                                      loudness,
+                                      denoiseAudio,
                                       file.name.replace(/\.[^.]+$/, ''),
                                       p => setBatchProgress(p),
                                     )

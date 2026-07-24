@@ -4,6 +4,7 @@ import type { BlurRegion } from '../components/FaceBlurPanel'
 import type { WatermarkConfig } from '../components/WatermarkPanel'
 import type { SilenceSegment } from './silenceCutter'
 import type { Ratio, CropMode } from './ffmpeg'
+import type { LoudnessTarget } from './loudness'
 
 export interface BatchProgress {
   ratio:   Ratio
@@ -29,19 +30,21 @@ function triggerDownload(blob: Blob, filename: string) {
 }
 
 export async function batchExport(
-  videoElement:  HTMLVideoElement,
-  captionGroups: CaptionGroup[],
-  captionStyle:  CaptionStyle,
-  trimStart:     number,
-  trimEnd:       number,
-  cropMode:      CropMode,
-  blurRegions:   BlurRegion[],
-  watermark:     WatermarkConfig | null,
-  manualCuts:    SilenceSegment[],
-  silenceSegs:   SilenceSegment[],
-  removeSilence: boolean,
-  baseName:      string,
-  onProgress:    (p: BatchProgress[]) => void,
+  videoElement:   HTMLVideoElement,
+  captionGroups:  CaptionGroup[],
+  captionStyle:   CaptionStyle,
+  trimStart:      number,
+  trimEnd:        number,
+  cropMode:       CropMode,
+  blurRegions:    BlurRegion[],
+  watermark:      WatermarkConfig | null,
+  manualCuts:     SilenceSegment[],
+  silenceSegs:    SilenceSegment[],
+  removeSilence:  boolean,
+  loudnessTarget: LoudnessTarget,
+  denoiseAudio:   boolean,
+  baseName:       string,
+  onProgress:     (p: BatchProgress[]) => void,
 ): Promise<void> {
   const progress: BatchProgress[] = BATCH_RATIOS.map(r => ({
     ratio:   r.ratio,
@@ -68,6 +71,8 @@ export async function batchExport(
         manualCuts,
         silenceSegs,
         removeSilence,
+        loudnessTarget,
+        denoiseAudio,
         onProgress: (pct) => {
           progress[i] = { ...progress[i], percent: Math.round(pct * 100) }
           onProgress([...progress])

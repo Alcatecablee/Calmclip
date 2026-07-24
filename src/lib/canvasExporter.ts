@@ -236,23 +236,31 @@ export async function exportVideoWithCaptions({
     const chunks: Blob[] = []
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
 
+    // Shared cleanup: called from both the success path (onstop) and all rejection
+    // paths so the AudioContext and audio element are always released.
+    function cleanupAudio(): void {
+      if (!audioBundle) return
+      try {
+        audioBundle.source.disconnect()
+        audioBundle.ctx.close()
+        audioBundle.audioEl.pause()
+        audioBundle.audioEl.src = ''
+        audioBundle.audioEl.load()
+      } catch (_) {}
+    }
+
     recorder.onstop = () => {
-      if (audioBundle) {
-        try {
-          audioBundle.source.disconnect()
-          audioBundle.ctx.close()
-          audioBundle.audioEl.pause()
-          audioBundle.audioEl.src = ''
-          audioBundle.audioEl.load()
-        } catch (_) {}
-      }
+      cleanupAudio()
       resolve(new Blob(chunks, { type: mimeType }))
     }
 
-    recorder.onerror = (e) => reject(new Error(
-      'MediaRecorder error: ' +
-      ((e as Event & { error?: { message?: string } }).error?.message || 'unknown')
-    ))
+    recorder.onerror = (e) => {
+      cleanupAudio()
+      reject(new Error(
+        'MediaRecorder error: ' +
+        ((e as Event & { error?: { message?: string } }).error?.message || 'unknown')
+      ))
+    }
 
     // ── Draw helpers ────────────────────────────────────────────────────
 
@@ -431,7 +439,7 @@ export async function exportVideoWithCaptions({
 
         video.play().then(() => {
           requestAnimationFrame(renderFrame)
-        }).catch(reject)
+        }).catch(err => { cleanupAudio(); reject(err instanceof Error ? err : new Error(String(err))) })
 
         video.onended = finishExport
       }
@@ -440,6 +448,6 @@ export async function exportVideoWithCaptions({
       video.currentTime = clipStart
     }
 
-    video.onerror = () => reject(new Error('Failed to load video for export'))
+    video.onerror = () => { cleanupAudio(); reject(new Error('Failed to load video for export')) }
   })
 }

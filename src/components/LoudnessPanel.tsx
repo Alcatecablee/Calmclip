@@ -58,7 +58,7 @@ export default function LoudnessPanel({ target, onChange, denoise, hasAudio = tr
 
       {enabled && (
         <p className="text-xs pl-5" style={{ color: 'var(--text-dim)' }}>
-          Applied via ffmpeg loudnorm filter at export. No pre-scan required.
+          Applied at export. Brings audio to approximately the selected loudness level.
         </p>
       )}
 
