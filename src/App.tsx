@@ -1136,7 +1136,7 @@ export default function App() {
                       { id: 'trim',           icon: <Scissors size={12} />, label: 'Trim',     badge: fmtDur(Math.max(0, trimEnd - trimStart)) },
                       { id: 'silence-cutter', icon: <VolumeX size={12} />,  label: 'Silence',  badge: removeSilence && silenceSegs.length > 0 ? String(silenceSegs.length) : undefined },
                       { id: 'region-blur',    icon: <EyeOff size={12} />,   label: 'Blur',     badge: blurRegions.length > 0 ? String(blurRegions.length) : undefined },
-                      { id: 'loudness',       icon: <Volume2 size={12} />,  label: 'Audio',    badge: loudness !== 'off' ? loudness : undefined },
+                      { id: 'loudness',       icon: <Volume2 size={12} />,  label: 'Audio',    badge: loudness !== 'off' ? loudness : denoiseAudio ? 'denoise' : undefined },
                       { id: 'captions',       icon: <Captions size={12} />, label: 'Captions', badge: words.length > 0 ? `${words.length}w` : undefined },
                       { id: 'privacy',        icon: <Lock size={12} />,     label: 'Privacy',  badge: stripMeta ? 'on' : undefined },
                       { id: 'watermark',      icon: <Sparkles size={12} />, label: 'Brand',    badge: undefined },
@@ -1570,11 +1570,12 @@ export default function App() {
                       )}
 
                       {openSection === 'loudness' && (
-                        <Section icon={<Volume2 size={13} />} label="Loudness" tooltip="Normalize audio levels to a broadcast standard" badge={loudness === 'off' ? 'off' : loudness} headerAction={<HeaderToggle checked={denoiseAudio} onToggle={e => { e.stopPropagation(); setDenoiseAudio(v => !v) }} label="Denoise audio" />}>
+                        <Section icon={<Volume2 size={13} />} label="Loudness" tooltip="Normalize audio levels to a broadcast standard" badge={loudness === 'off' ? 'off' : loudness} headerAction={hasAudio ? <HeaderToggle checked={denoiseAudio} onToggle={e => { e.stopPropagation(); setDenoiseAudio(v => !v) }} label="Denoise audio" /> : undefined}>
                           <LoudnessPanel
                             target={loudness}
                             onChange={setLoudness}
                             denoise={denoiseAudio}
+                            hasAudio={hasAudio}
                           />
                         </Section>
                       )}

@@ -3,12 +3,21 @@ import { LOUDNESS_PRESETS, type LoudnessTarget } from '../lib/loudness'
 import { recordToolUsage } from '../lib/projectSession'
 
 interface Props {
-  target:   LoudnessTarget
-  onChange: (t: LoudnessTarget) => void
-  denoise:  boolean
+  target:    LoudnessTarget
+  onChange:  (t: LoudnessTarget) => void
+  denoise:   boolean
+  hasAudio?: boolean
 }
 
-export default function LoudnessPanel({ target, onChange, denoise }: Props) {
+export default function LoudnessPanel({ target, onChange, denoise, hasAudio = true }: Props) {
+  if (!hasAudio) {
+    return (
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        No audio track detected in this video. Loudness normalization is not available.
+      </p>
+    )
+  }
+
   const enabled = target !== 'off'
 
   return (
