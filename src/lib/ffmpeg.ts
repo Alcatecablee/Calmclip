@@ -695,7 +695,8 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
       } else {
         try {
           return await exportVideoWebCodecs(opts)
-        } catch {
+        } catch (wcErr) {
+          console.warn('[CalmClip] WebCodecs export failed, falling back to FFmpeg:', wcErr instanceof Error ? wcErr.message : String(wcErr))
           onPhase?.('Transcoding (compatibility mode)...')
         }
       }
@@ -997,7 +998,7 @@ async function exportWithCuts(p: CutsExportParams): Promise<Uint8Array> {
     // readFile() can complete. All other export paths already omit faststart
     // for the same reason. Moov-at-tail is valid for direct download and
     // upload platforms re-process the container on ingest.
-    args.push(...codecArgs(outputFormat, hasAudio, '', true))
+    args.push(...codecArgs(outputFormat, hasAudio, null, true))
     if (stripMetadata) args.push('-map_metadata', '-1')
     args.push('-y', outputName)
 

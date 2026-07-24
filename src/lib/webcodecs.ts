@@ -424,9 +424,9 @@ export async function exportVideoWebCodecs(opts: ExportOptions): Promise<Uint8Ar
     if (!ctx) { fail(new Error('OffscreenCanvas 2D context is unavailable in this browser.')); return }
 
     function tryFinalize(): void {
-      if (!vFlushDone || !aFlushDone || failed) return
+      if (!vFlushDone || !aFlushDone || failed || !muxer) return
       try {
-        muxer!.finalize()
+        muxer.finalize()
         if (wmBitmap) { try { wmBitmap.close() } catch { /* ignore */ } }
         onProgress(100)
         resolve(new Uint8Array(target.buffer))
@@ -626,7 +626,12 @@ export async function exportVideoWebCodecs(opts: ExportOptions): Promise<Uint8Ar
 
       videoEncoder = new VideoEncoder({
         output: (chunk: EncodedVideoChunk, meta: EncodedVideoChunkMetadata | undefined) => {
-          if (!failed) muxer!.addVideoChunk(chunk, meta)
+          if (failed) return
+          try {
+            muxer!.addVideoChunk(chunk, meta)
+          } catch (e) {
+            fail(new Error(`Video mux error: ${e instanceof Error ? e.message : String(e)}`))
+          }
         },
         error: (e: DOMException) => fail(new Error(`Video encode error: ${e.message}`)),
       })
@@ -664,7 +669,15 @@ export async function exportVideoWebCodecs(opts: ExportOptions): Promise<Uint8Ar
         })
         audioEncoder = new AudioEncoder({
           output: (chunk: EncodedAudioChunk, meta: EncodedAudioChunkMetadata | undefined) => {
-            if (!failed) muxer!.addAudioChunk(chunk, meta)
+            if (failed) return
+            try {
+              muxer!.addAudioChunk(chunk, meta)
+            } catch (e) {
+              // Non-fatal: a corrupt audio chunk should not abort the whole export.
+              console.warn('[CalmClip] Audio mux error (non-fatal):', e instanceof Error ? e.message : String(e))
+              aFlushDone = true
+              tryFinalize()
+            }
           },
           error: (e: DOMException) => {
             console.warn('[CalmClip] WebCodecs audio encode error (non-fatal):', e.message)

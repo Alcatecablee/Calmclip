@@ -543,16 +543,31 @@ export async function exportVideoWithCaptions({
             if (hit) {
               const skipTo = Math.min(hit[1], clipEnd)
               isSeeking = true
+              // Pause the audio element immediately so no content from the
+              // skipped region is routed through the Web Audio graph and
+              // recorded into the MediaRecorder output during the seek.
+              if (audioBundle) audioBundle.audioEl.pause()
               video.onseeked = () => {
                 video.onseeked = null
-                // Re-sync audio to the new video position
-                if (audioBundle) audioBundle.audioEl.currentTime = skipTo
+                // Re-sync audio to the new video position and resume.
+                if (audioBundle) {
+                  audioBundle.audioEl.currentTime = skipTo
+                  audioBundle.audioEl.play().catch(() => {})
+                }
                 isSeeking = false
                 requestAnimationFrame(renderFrame)
               }
               video.currentTime = skipTo
               return
             }
+          }
+
+          // While a seek is in progress, hold the canvas without drawing:
+          // rendering the in-flight seek frame would record a stale or
+          // partially-decoded frame from the cut region into the output.
+          if (isSeeking) {
+            requestAnimationFrame(renderFrame)
+            return
           }
 
           // ── Render composite layers ──────────────────────────────────
