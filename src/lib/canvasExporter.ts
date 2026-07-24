@@ -201,12 +201,17 @@ export async function exportVideoWithCaptions({
     const pixCanvas = document.createElement('canvas')
     const pixCtx    = pixCanvas.getContext('2d')!
 
-    // Scale caption style to canvas resolution (1080p baseline)
+    // Scale caption style to canvas resolution (1080p baseline).
+    // strokeWidth uses Math.max(1, ...) when the original is non-zero so that
+    // a configured stroke is never silently dropped by rounding on small exports
+    // (e.g. 360p where scaleFactor ~= 0.33 rounds strokeWidth=1 down to 0).
     const scaleFactor = vh / 1080
     const scaledStyle = {
       ...captionStyle,
       fontSize:    Math.round(captionStyle.fontSize    * scaleFactor),
-      strokeWidth: Math.round(captionStyle.strokeWidth * scaleFactor),
+      strokeWidth: captionStyle.strokeWidth > 0
+        ? Math.max(1, Math.round(captionStyle.strokeWidth * scaleFactor))
+        : 0,
       shadowBlur:  Math.round(captionStyle.shadowBlur  * scaleFactor),
       bgRadius:    Math.round(captionStyle.bgRadius     * scaleFactor),
     }

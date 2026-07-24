@@ -2,15 +2,33 @@ import type { Word } from './captionEngine'
 
 const TAG = '[CalmClip Whisper]'
 
-// Decode a 16 kHz mono WAV Blob to a Float32Array of PCM samples.
+// Decode a 16 kHz mono WAV Blob to a normalized Float32Array of PCM samples.
 // AudioContext is available on the main thread; the worker receives the raw
 // samples directly, matching the original worker-based implementation.
+//
+// Peak normalization mirrors the logic in whisper.ts extractAudioForWhisper:
+// when 0.02 < peak < 0.9, scale to a 0.9 peak so Whisper receives consistent
+// amplitude regardless of whether the source video was quiet or loud.
+// Below 0.02 the audio is near-silent (VAD will handle it); above 0.9 no gain
+// is needed. In both cases the raw samples are returned unchanged.
 async function blobToFloat32Array(blob: Blob): Promise<Float32Array> {
   const arrayBuffer = await blob.arrayBuffer()
   const audioCtx = new AudioContext({ sampleRate: 16000 })
   try {
     const decoded = await audioCtx.decodeAudioData(arrayBuffer)
-    return decoded.getChannelData(0) // mono: channel 0
+    const raw = decoded.getChannelData(0) // mono: channel 0
+    let peak = 0
+    for (let i = 0; i < raw.length; i++) {
+      const abs = Math.abs(raw[i])
+      if (abs > peak) peak = abs
+    }
+    if (peak > 0.02 && peak < 0.9) {
+      const gain = 0.9 / peak
+      const normalised = new Float32Array(raw.length)
+      for (let i = 0; i < raw.length; i++) normalised[i] = raw[i] * gain
+      return normalised
+    }
+    return raw
   } finally {
     audioCtx.close()
   }

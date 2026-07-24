@@ -284,6 +284,11 @@ export default function App() {
         setBlurFormState(BLUR_FORM_DEFAULT)
         setDenoiseAudio(false)
         clearManualCuts()
+        setWords([])
+        setCaptionStyle(CAPTION_PRESETS.boldPop)
+        setTranscriptResult(null)
+        setTranscriptLanguage(undefined)
+        setRemovedFillers([])
       }
     })
     setMeta(null)
@@ -570,6 +575,9 @@ export default function App() {
     setFrameCopied(false)
     setWords([])
     setCaptionStyle(CAPTION_PRESETS.boldPop)
+    setTranscriptResult(null)
+    setTranscriptLanguage(undefined)
+    setRemovedFillers([])
   }
 
 

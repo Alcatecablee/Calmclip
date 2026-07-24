@@ -40,6 +40,10 @@ export function downloadSubtitle(content: string, filename: string): void {
   const a    = document.createElement('a')
   a.href     = url
   a.download = filename
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  // Defer revocation so the browser has time to begin the download
+  // before the object URL is invalidated. Mirrors the pattern in subtitleExport.ts.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }

@@ -339,7 +339,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
 
           {phase === PHASES.downloading && (
             <p className="mt-1 text-[10px]" style={{ color: 'var(--text-faint)' }}>
-              One-time download (~37 MB). After this, the app works fully offline.
+              One-time download (~{WHISPER_MODELS.find(m => m.id === modelId)?.size ?? '37 MB'}). After this, the app works fully offline.
             </p>
           )}
 
