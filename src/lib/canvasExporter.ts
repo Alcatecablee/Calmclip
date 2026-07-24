@@ -73,6 +73,11 @@ async function buildAudioChain(
   const audioEl = new Audio()
   audioEl.src   = src
   audioEl.muted = false
+  // Explicit load() so the browser starts buffering immediately.
+  // Safari does not begin loading when src is set on a newly created Audio
+  // element without an explicit call; this ensures createMediaElementSource
+  // below receives a valid, loading element on all browsers.
+  audioEl.load()
 
   const ctx    = new AudioContext()
   try {
@@ -262,6 +267,7 @@ export async function exportVideoWithCaptions({
     if (!mimeType) {
       canvasStream.getTracks().forEach(track => track.stop())
       if (audioBundle) {
+        try { audioBundle.source.disconnect() } catch { /* best effort */ }
         void audioBundle.ctx.close()
         audioBundle.audioEl.pause()
         audioBundle.audioEl.src = ''
@@ -278,7 +284,13 @@ export async function exportVideoWithCaptions({
       })
     } catch (error) {
       canvasStream.getTracks().forEach(track => track.stop())
-      if (audioBundle) void audioBundle.ctx.close()
+      if (audioBundle) {
+        try { audioBundle.source.disconnect() } catch { /* best effort */ }
+        void audioBundle.ctx.close()
+        audioBundle.audioEl.pause()
+        audioBundle.audioEl.src = ''
+        audioBundle.audioEl.load()
+      }
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(`Video recorder setup failed: ${message}`)
     }
@@ -451,7 +463,10 @@ export async function exportVideoWithCaptions({
       function finishExport() {
         if (finished || settled) return
         finished = true
-        onProgress?.(1)
+        // 0.98 rather than 1: the remaining 2% is covered by the metadata-strip
+        // phase so the progress bar does not read 100% while "Removing metadata..."
+        // is still running. ExportPanel shows the done state only after resolve().
+        onProgress?.(0.98)
         video.pause()
         if (audioBundle) { audioBundle.audioEl.pause() }
         stopTimer = setTimeout(() => {

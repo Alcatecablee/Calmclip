@@ -755,11 +755,15 @@ export async function exportVideoWebCodecs(opts: ExportOptions): Promise<Uint8Ar
       } else if (trackId === audioTrackId && audioDecoder) {
         for (const sample of samples) {
           const tsSec = sample.cts / audioTimescale
-          if (tsSec < trimStart - 0.5 || tsSec >= trimEnd + 0.5) continue
+          // AAC frames are independently decodable (no inter-frame prediction),
+          // so no pre-roll is needed before trimStart. Including samples before
+          // trimStart and mapping them to timestamp=0 would place unwanted audio
+          // from before the trim point at the start of the export output.
+          if (tsSec < trimStart || tsSec >= trimEnd + 0.5) continue
           try {
             audioDecoder.decode(new EncodedAudioChunk({
               type:      sample.is_sync ? 'key' : 'delta',
-              timestamp: Math.max(0, tsSec - trimStart) * 1_000_000,
+              timestamp: (tsSec - trimStart) * 1_000_000,
               duration:  sample.duration / audioTimescale * 1_000_000,
               data:      sample.data,
             }))

@@ -986,7 +986,12 @@ async function exportWithCuts(p: CutsExportParams): Promise<Uint8Array> {
       '-map',            `[${finalVLabel}]`,
     ]
     if (hasAudio) args.push('-map', '[aout]')
-    args.push(...codecArgs(outputFormat, hasAudio, '', false))
+    // omitFastStart=true: the +faststart moov-relocation second pass triggers
+    // MT pthread teardown in the WASM core and kills the worker before
+    // readFile() can complete. All other export paths already omit faststart
+    // for the same reason. Moov-at-tail is valid for direct download and
+    // upload platforms re-process the container on ingest.
+    args.push(...codecArgs(outputFormat, hasAudio, '', true))
     if (stripMetadata) args.push('-map_metadata', '-1')
     args.push('-y', outputName)
 
