@@ -522,7 +522,14 @@ export async function exportVideoWebCodecs(opts: ExportOptions): Promise<Uint8Ar
       }
 
       const fileDurSec = info.duration / info.timescale
-      const fps        = Math.max(1, Math.round(vTrack.nb_samples / Math.max(0.001, fileDurSec)))
+      // Guard against degenerate containers: timescale=0 produces Infinity;
+      // duration=0 (valid in some HEVC/screen-capture recordings) produces an
+      // enormous fps that makes estimatedFrames millions → progress bar stuck at 0 %.
+      // Fall back to the actual trim length so estimatedFrames is at least sane.
+      const safeDurSec = Number.isFinite(fileDurSec) && fileDurSec > 0
+        ? fileDurSec
+        : Math.max(0.001, trimEnd - trimStart)
+      const fps        = Math.max(1, Math.round(vTrack.nb_samples / Math.max(0.001, safeDurSec)))
       estimatedFrames  = Math.max(1, Math.round((trimEnd - trimStart) * fps))
 
       // ── VideoDecoder ───────────────────────────────────────────────────────

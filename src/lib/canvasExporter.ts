@@ -211,6 +211,12 @@ export async function exportVideoWithCaptions({
     audioBundle = await buildAudioChain(videoElement.src, denoiseAudio, loudnessTarget)
   }
 
+  // Signal the UI now so the phase label reads "Rendering video..." rather than
+  // staying at "Preparing audio..." for the entire duration of the encode.
+  // This must be called before the Promise constructor so the label updates
+  // synchronously in the same microtask as the caller's await.
+  onPhase?.('Rendering video...')
+
   return new Promise((resolve, reject) => {
     // Use a fresh video clone for frame rendering.
     // Do NOT set crossOrigin: the src is a blob URL (same-origin) and crossOrigin
@@ -219,6 +225,11 @@ export async function exportVideoWithCaptions({
     video.src       = videoElement.src
     video.muted     = true
     video.playsInline = true
+    // Explicit load() so the browser starts buffering the clone immediately.
+    // Firefox and some mobile browsers do not begin loading a programmatically
+    // created video element when only src is set; without load(), onloadeddata
+    // may never fire and the export Promise would hang indefinitely.
+    video.load()
 
     const vw = targetWidth  || videoElement.videoWidth  || 1280
     const vh = targetHeight || videoElement.videoHeight || 720
@@ -298,13 +309,21 @@ export async function exportVideoWithCaptions({
     const chunks: Blob[] = []
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
 
-    let settled   = false
-    let stopTimer: ReturnType<typeof setTimeout> | null = null
+    let settled          = false
+    let stopTimer:        ReturnType<typeof setTimeout> | null = null
+    // Cleared when onloadeddata fires; fires failExport if the cloned video
+    // element never loads (e.g. partially-corrupt first segment, browser refusal
+    // to buffer a second element concurrently, network interruption mid-session).
+    let loadedDataTimer: ReturnType<typeof setTimeout> | null = null
 
     function cleanup(): void {
       if (stopTimer !== null) {
         clearTimeout(stopTimer)
         stopTimer = null
+      }
+      if (loadedDataTimer !== null) {
+        clearTimeout(loadedDataTimer)
+        loadedDataTimer = null
       }
       video.onloadeddata = null
       video.onseeked = null
@@ -451,7 +470,23 @@ export async function exportVideoWithCaptions({
     }
 
     // ── Main export loop ────────────────────────────────────────────────
+    // Safety net: if the cloned video never fires onloadeddata (e.g. the blob
+    // URL was revoked while loading, the browser throttles a second concurrent
+    // video element, or the first segment of the container is corrupt), the
+    // export Promise would be permanently pending with no way to cancel it.
+    // After 30 s we reject so the user sees an actionable error instead of an
+    // infinite spinner. 30 s is conservative: typical blob-URL load times for
+    // files already in the browser are under 200 ms.
+    loadedDataTimer = setTimeout(() => {
+      failExport(new Error(
+        'The video took too long to load for export. ' +
+        'Check that the file is still accessible and try again.'
+      ))
+    }, 30_000)
+
     video.onloadeddata = () => {
+      // Cancel the safety-net timer as soon as the video is ready.
+      if (loadedDataTimer !== null) { clearTimeout(loadedDataTimer); loadedDataTimer = null }
       const totalDuration  = video.duration
       const clipStart      = Math.max(0, trimStart)
       const clipEnd        = trimEnd !== null ? Math.min(trimEnd, totalDuration) : totalDuration

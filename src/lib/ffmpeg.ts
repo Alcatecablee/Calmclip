@@ -790,6 +790,7 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
         outW, outH, loudnessTarget, denoiseAudio: denoiseAudio ?? false,
         stripMetadata, blurRegions, hasAudio, watermark,
         trimStart, outputFormat,
+        onProgress,
         onPhaseChange: (label, offset, scale) => {
           phaseOffset = offset
           phaseScale  = scale
@@ -913,6 +914,10 @@ interface CutsExportParams {
   trimStart:         number
   outputFormat:      OutputFormat
   onPhaseChange?:    (label: string, offset: number, scale: number) => void
+  // Called with 99 just before ff.readFile so the progress bar advances to
+  // the same near-complete state as the non-cuts path. Without this, the bar
+  // stops at whatever FFmpeg's last progress event reported and jumps to "done".
+  onProgress?:       (pct: number) => void
 }
 
 async function exportWithCuts(p: CutsExportParams): Promise<Uint8Array> {
@@ -998,6 +1003,10 @@ async function exportWithCuts(p: CutsExportParams): Promise<Uint8Array> {
     console.log('[CalmClip] exportWithCuts: calling execOrThrow')
     await runFfmpegWithWatchdog(ff, args, calcStaleMs(outDuration))
     console.log('[CalmClip] exportWithCuts: execOrThrow returned, calling ff.readFile')
+    // Signal 99 % before readFile so the bar advances past whatever FFmpeg's
+    // last progress event reported. readFile produces no progress events, so
+    // without this the bar stays at an intermediate value until "done" appears.
+    p.onProgress?.(99)
     const result = (await ff.readFile(outputName)) as Uint8Array
     console.log('[CalmClip] exportWithCuts: ff.readFile returned, byteLength:', result?.byteLength)
     if (!result || result.byteLength === 0) {

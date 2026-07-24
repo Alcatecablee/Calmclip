@@ -26,7 +26,11 @@ function triggerDownload(blob: Blob, filename: string) {
   const a   = document.createElement('a')
   a.href     = url
   a.download = filename
+  // Append to DOM before clicking: Firefox requires the anchor to be in the
+  // document before dispatching the click or the download is silently dropped.
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
