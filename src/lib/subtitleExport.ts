@@ -120,7 +120,11 @@ export function downloadPlainText(
     const a    = document.createElement('a')
     a.href     = url
     a.download = fileName
+    // Append to DOM before clicking: Firefox requires the anchor to be in the
+    // document before dispatching the click or the download is silently dropped.
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
   } finally {
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }
@@ -141,7 +145,11 @@ export function downloadSubtitles(
     const a    = document.createElement('a')
     a.href     = url
     a.download = fileName
+    // Append to DOM before clicking: Firefox requires the anchor to be in the
+    // document before dispatching the click or the download is silently dropped.
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
   } finally {
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }

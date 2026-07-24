@@ -40,13 +40,18 @@ export function generateVTT(captionGroups: CaptionGroup[]): string {
 export function downloadSubtitle(content: string, filename: string): void {
   const blob = new Blob([content], { type: 'text/plain' })
   const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  // Defer revocation so the browser has time to begin the download
-  // before the object URL is invalidated. Mirrors the pattern in subtitleExport.ts.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  try {
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = filename
+    // Append to DOM before clicking: Firefox requires the anchor to be in the
+    // document before dispatching the click or the download is silently dropped.
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  } finally {
+    // Defer revocation so the browser has time to start the download before
+    // the object URL is invalidated.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  }
 }
