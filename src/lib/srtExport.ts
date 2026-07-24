@@ -1,10 +1,13 @@
 import type { CaptionGroup } from './captionEngine'
 
 function toTimecode(seconds: number, format: 'srt' | 'vtt'): string {
-  const h   = Math.floor(seconds / 3600)
-  const m   = Math.floor((seconds % 3600) / 60)
-  const s   = Math.floor(seconds % 60)
-  const ms  = Math.round((seconds % 1) * 1000)
+  // Work in integer milliseconds so partial-second rounding never produces
+  // an ms value of 1000 (e.g. Math.round(0.9995 * 1000) = 1000 is invalid).
+  const totalMs = Math.round(Math.max(0, seconds) * 1000)
+  const ms  = totalMs % 1000
+  const s   = Math.floor(totalMs / 1000) % 60
+  const m   = Math.floor(totalMs / 60000) % 60
+  const h   = Math.floor(totalMs / 3600000)
   const sep = format === 'srt' ? ',' : '.'
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}${sep}${String(ms).padStart(3, '0')}`
 }

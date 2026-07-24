@@ -7,11 +7,19 @@ interface SubtitleCue {
   text:   string
 }
 
+// Work in integer milliseconds so partial-second rounding never produces
+// an ms value of 1000 (e.g. Math.round(0.9995 * 1000) = 1000 is invalid
+// in both SRT and VTT; the field must stay in the range 0-999).
+function toTotalMs(sec: number): number {
+  return Math.round(Math.max(0, sec) * 1000)
+}
+
 function formatSrtTime(sec: number): string {
-  const h   = Math.floor(sec / 3600)
-  const m   = Math.floor((sec % 3600) / 60)
-  const s   = Math.floor(sec % 60)
-  const ms  = Math.round((sec % 1) * 1000)
+  const totalMs = toTotalMs(sec)
+  const ms = totalMs % 1000
+  const s  = Math.floor(totalMs / 1000) % 60
+  const m  = Math.floor(totalMs / 60000) % 60
+  const h  = Math.floor(totalMs / 3600000)
   return (
     String(h).padStart(2, '0') + ':' +
     String(m).padStart(2, '0') + ':' +
@@ -21,10 +29,11 @@ function formatSrtTime(sec: number): string {
 }
 
 function formatVttTime(sec: number): string {
-  const h   = Math.floor(sec / 3600)
-  const m   = Math.floor((sec % 3600) / 60)
-  const s   = Math.floor(sec % 60)
-  const ms  = Math.round((sec % 1) * 1000)
+  const totalMs = toTotalMs(sec)
+  const ms = totalMs % 1000
+  const s  = Math.floor(totalMs / 1000) % 60
+  const m  = Math.floor(totalMs / 60000) % 60
+  const h  = Math.floor(totalMs / 3600000)
   return (
     String(h).padStart(2, '0') + ':' +
     String(m).padStart(2, '0') + ':' +

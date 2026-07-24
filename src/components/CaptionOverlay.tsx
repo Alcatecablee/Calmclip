@@ -59,7 +59,13 @@ export default function CaptionOverlay({ videoRef, captionGroups, captionStyle }
         const scaledStyle = {
           ...captionStyle,
           fontSize:    Math.round(captionStyle.fontSize    * scaleFactor),
-          strokeWidth: Math.max(1, Math.round(captionStyle.strokeWidth * scaleFactor)),
+          // Guard: only apply Math.max(1,...) when the original strokeWidth is
+          // non-zero. Styles with strokeWidth=0 must stay at 0 so the stroke
+          // pass in drawCaptions is skipped. Without this guard every zero-stroke
+          // preset (e.g. Boxed) draws an unwanted 1px outline in the preview.
+          strokeWidth: captionStyle.strokeWidth > 0
+            ? Math.max(1, Math.round(captionStyle.strokeWidth * scaleFactor))
+            : 0,
           shadowBlur:  Math.round(captionStyle.shadowBlur  * scaleFactor),
           bgRadius:    Math.round(captionStyle.bgRadius     * scaleFactor),
         }

@@ -234,8 +234,16 @@ export default function App() {
     setDenoiseAudio(session.denoiseAudio ?? false)
     setManualCuts(session.manualCuts ?? [])
     if (session.watermark) setWatermark(session.watermark)
-    if (session.words?.length) setWords(session.words)
-    if (session.captionStyle) setCaptionStyle(session.captionStyle)
+    // Caption state: restore from session when present; clear otherwise so
+    // a previous file's transcript never bleeds into the new session.
+    setWords(session.words?.length ? session.words : [])
+    setCaptionStyle(session.captionStyle ?? CAPTION_PRESETS.boldPop)
+    // TranscriptResult is not persisted in sessions, so always clear it.
+    // This prevents the HookScorer, FillerWordPanel, and other AI panels
+    // from showing stale analysis from a previously edited file.
+    setTranscriptResult(null)
+    setTranscriptLanguage(undefined)
+    setRemovedFillers([])
     setSessionBanner(true)
     setTimeout(() => setSessionBanner(false), 4000)
   }, [setManualCuts, setSessionBanner])
