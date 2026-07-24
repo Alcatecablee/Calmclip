@@ -344,6 +344,7 @@ export async function stripMetadataFromWebm(blob: Blob): Promise<Blob> {
     const ff = await loadFfmpeg()
     await ff.writeFile(inputName, await fetchFile(blob))
     await runFfmpegWithWatchdog(ff, [
+      '-fflags', '+genpts',
       '-i', inputName,
       '-map', '0',
       '-c', 'copy',
