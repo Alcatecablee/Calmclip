@@ -41,6 +41,7 @@ export interface CaptionStyle {
   bgEnabled: boolean
   bgColor: string
   bgRadius: number
+  bgPerWord?: boolean
   wordsPerGroup: number
 }
 
@@ -91,7 +92,7 @@ export const CAPTION_PRESETS: Record<string, CaptionStyle> = {
   boxed: {
     id: 'boxed',
     name: 'Boxed',
-    description: 'Each word in a colored box, highlight swaps color',
+    description: 'Each word in its own colored box, active word highlights',
     fontFamily: '"Inter", "Helvetica Neue", sans-serif',
     fontSize: 48,
     fontWeight: '800',
@@ -105,6 +106,7 @@ export const CAPTION_PRESETS: Record<string, CaptionStyle> = {
     position: 'center',
     animation: 'bounce',
     bgEnabled: true,
+    bgPerWord: true,
     bgColor: '#1a1a2e',
     bgRadius: 12,
     wordsPerGroup: 3,
@@ -302,17 +304,34 @@ export const CAPTION_PRESETS: Record<string, CaptionStyle> = {
 
 /**
  * Groups words into caption groups based on timing and word count.
+ * Respects sentence boundaries: groups flush early at sentence-ending
+ * punctuation (period, exclamation mark, question mark) once at least
+ * half of wordsPerGroup words have accumulated. This prevents captions
+ * from being split mid-sentence while still honoring the word count limit.
  */
 export function groupWords(words: Word[], wordsPerGroup = 3): CaptionGroup[] {
+  if (words.length === 0) return []
   const groups: CaptionGroup[] = []
-  for (let i = 0; i < words.length; i += wordsPerGroup) {
-    const chunk = words.slice(i, i + wordsPerGroup)
-    groups.push({
-      words: chunk,
-      startTime: chunk[0].startTime,
-      endTime: chunk[chunk.length - 1].endTime,
-    })
+  const minBeforeBreak = Math.max(1, Math.floor(wordsPerGroup * 0.5))
+  let current: Word[] = []
+
+  for (let i = 0; i < words.length; i++) {
+    current.push(words[i])
+    const isLast = i === words.length - 1
+    const endsWithSentence = /[.!?]$/.test(words[i].text.trim())
+    const atLimit = current.length >= wordsPerGroup
+    const earlyBreak = endsWithSentence && current.length >= minBeforeBreak
+
+    if (atLimit || earlyBreak || isLast) {
+      groups.push({
+        words: current,
+        startTime: current[0].startTime,
+        endTime: current[current.length - 1].endTime,
+      })
+      current = []
+    }
   }
+
   return groups
 }
 
@@ -340,6 +359,15 @@ export function getActiveCaption(groups: CaptionGroup[], currentTime: number): A
 /**
  * Draw captions onto a 2D canvas context.
  * This is the core renderer, used both for preview overlay and export compositing.
+ *
+ * Supports:
+ *   - Word wrapping: words that exceed 88% of canvas width wrap to the next line.
+ *   - Per-word background boxes (bgPerWord=true): each word gets its own pill;
+ *     the active word's box uses highlightColor while inactive words use bgColor.
+ *   - Per-line background box (bgPerWord=false): a single rectangle covers the
+ *     whole line, matching the classic subtitle style.
+ *   - All animation types (scale, bounce, fade, shake, punch, glow, glitch).
+ *   - Multi-line vertical centering for top, center, and bottom positions.
  */
 export function drawCaptions(
   ctx: CanvasRenderingContext2D,
@@ -352,139 +380,198 @@ export function drawCaptions(
   if (!activeCaption || !activeCaption.group) return
 
   const { group, activeWordIndex } = activeCaption
-  const text = style.textTransform === 'uppercase'
+  const texts = style.textTransform === 'uppercase'
     ? group.words.map(w => w.text.toUpperCase())
     : group.words.map(w => w.text)
 
   ctx.save()
-
-  // Measure text
   ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
-  const wordMetrics = text.map(t => ({
+
+  // Measure every word before layout
+  const measured: { text: string; width: number }[] = texts.map(t => ({
     text: t,
     width: ctx.measureText(t).width,
   }))
+
   const gap = style.fontSize * 0.35
-  const totalWidth = wordMetrics.reduce((s, m) => s + m.width, 0) + gap * (wordMetrics.length - 1)
+  const maxLineWidth = canvasWidth * 0.88
 
-  // Position
-  let baseY: number
-  if (style.position === 'top') {
-    baseY = canvasHeight * 0.15
-  } else if (style.position === 'bottom') {
-    baseY = canvasHeight * 0.82
-  } else {
-    baseY = canvasHeight * 0.5
-  }
+  // --- Word-wrap: split into lines that each fit within maxLineWidth ---
+  const lines: { text: string; width: number }[][] = []
+  let currentLine: { text: string; width: number }[] = []
+  let currentLineW = 0
 
-  const startX = (canvasWidth - totalWidth) / 2
-
-  // Draw background if enabled
-  if (style.bgEnabled) {
-    const padding = style.fontSize * 0.4
-    const bgX = startX - padding
-    const bgY = baseY - style.fontSize * 0.8 - padding * 0.5
-    const bgW = totalWidth + padding * 2
-    const bgH = style.fontSize * 1.2 + padding
-
-    ctx.fillStyle = style.bgColor
-    if (style.bgRadius > 0) {
-      ctx.beginPath()
-      ctx.roundRect(bgX, bgY, bgW, bgH, style.bgRadius)
-      ctx.fill()
+  for (const wm of measured) {
+    const addW = currentLine.length === 0 ? wm.width : gap + wm.width
+    if (currentLine.length > 0 && currentLineW + addW > maxLineWidth) {
+      lines.push(currentLine)
+      currentLine = [wm]
+      currentLineW = wm.width
     } else {
-      ctx.fillRect(bgX, bgY, bgW, bgH)
+      currentLine.push(wm)
+      currentLineW += addW
     }
   }
+  if (currentLine.length > 0) lines.push(currentLine)
 
-  // Draw each word
-  let currentX = startX
-  for (let i = 0; i < wordMetrics.length; i++) {
-    const isActive = i === activeWordIndex
-    const word = wordMetrics[i]
+  // Width of each rendered line
+  const lineWidths = lines.map(line =>
+    line.reduce((s, wm) => s + wm.width, 0) + gap * Math.max(0, line.length - 1)
+  )
 
-    ctx.save()
+  // --- Vertical layout ---
+  // firstBaseY is the text baseline of the first wrapped line.
+  // For bottom position the last line sits near the bottom edge.
+  // For center position the entire block is centered on the canvas.
+  const lineHeight = style.fontSize * 1.45
+  let firstBaseY: number
 
-    // Animation for active word
-    if (isActive) {
-      const centerX = currentX + word.width / 2
-      const centerY = baseY
+  if (style.position === 'top') {
+    firstBaseY = canvasHeight * 0.08 + style.fontSize
+  } else if (style.position === 'bottom') {
+    const lastBaseY = canvasHeight * 0.90
+    firstBaseY = lastBaseY - (lines.length - 1) * lineHeight
+  } else {
+    firstBaseY = canvasHeight * 0.5 - ((lines.length - 1) * lineHeight) / 2
+  }
 
-      if (style.animation === 'scale') {
-        const scale = 1 + 0.15 * Math.sin(animationProgress * Math.PI)
-        ctx.translate(centerX, centerY)
-        ctx.scale(scale, scale)
-        ctx.translate(-centerX, -centerY)
-      } else if (style.animation === 'bounce') {
-        const bounce = -8 * Math.sin(animationProgress * Math.PI)
-        ctx.translate(0, bounce)
-      } else if (style.animation === 'fade') {
-        ctx.globalAlpha = Math.min(1, animationProgress * 4)
-      } else if (style.animation === 'shake') {
-        const intensity = 3 * (1 - Math.min(1, animationProgress * 2))
-        ctx.translate(
-          Math.sin(animationProgress * Math.PI * 7) * intensity,
-          Math.cos(animationProgress * Math.PI * 5) * intensity,
-        )
-      } else if (style.animation === 'punch') {
-        const overshoot = animationProgress < 0.25
-          ? 1.4 - 1.6 * animationProgress
-          : 1 + 0.06 * Math.sin((animationProgress - 0.25) * Math.PI / 0.75)
-        ctx.translate(centerX, centerY)
-        ctx.scale(overshoot, overshoot)
-        ctx.translate(-centerX, -centerY)
+  // Padding values used by background boxes
+  const linePad  = style.bgEnabled && !style.bgPerWord ? style.fontSize * 0.4  : 0
+  const wordPad  = style.bgEnabled &&  style.bgPerWord ? style.fontSize * 0.15 : 0
+
+  // globalWordIdx maps each word across all wrapped lines back to its original
+  // index so it matches activeWordIndex from getActiveCaption.
+  let globalWordIdx = 0
+
+  for (let li = 0; li < lines.length; li++) {
+    const line     = lines[li]
+    const lineW    = lineWidths[li]
+    const lineBaseY = firstBaseY + li * lineHeight
+    const lineStartX = (canvasWidth - lineW) / 2
+
+    // Per-line background (classic subtitle bar, not per-word)
+    if (style.bgEnabled && !style.bgPerWord) {
+      const bgX = lineStartX - linePad
+      const bgY = lineBaseY - style.fontSize * 0.85 - linePad * 0.5
+      const bgW = lineW + linePad * 2
+      const bgH = style.fontSize * 1.25 + linePad
+      ctx.fillStyle = style.bgColor
+      if (style.bgRadius > 0) {
+        ctx.beginPath()
+        ctx.roundRect(bgX, bgY, bgW, bgH, style.bgRadius)
+        ctx.fill()
+      } else {
+        ctx.fillRect(bgX, bgY, bgW, bgH)
       }
     }
 
-    // Shadow
-    ctx.shadowColor = isActive ? style.shadowColor : 'rgba(0,0,0,0.5)'
-    ctx.shadowBlur = isActive ? style.shadowBlur : style.shadowBlur * 0.5
-    ctx.shadowOffsetX = 0
-    ctx.shadowOffsetY = 2
+    let curX = lineStartX
 
-    // Stroke
-    if (style.strokeWidth > 0 && style.strokeColor !== 'transparent') {
-      ctx.strokeStyle = style.strokeColor
-      ctx.lineWidth = style.strokeWidth
-      ctx.lineJoin = 'round'
-      ctx.miterLimit = 2
-      ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
-      ctx.strokeText(word.text, currentX, baseY)
-    }
+    for (let wi = 0; wi < line.length; wi++) {
+      const wm       = line[wi]
+      const isActive = globalWordIdx === activeWordIndex
+      const centerX  = curX + wm.width / 2
 
-    // Fill
-    ctx.shadowColor = 'transparent'
-    ctx.fillStyle = isActive ? style.highlightColor : style.color
-    ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
-    ctx.fillText(word.text, currentX, baseY)
+      ctx.save()
 
-    // Neon glow extra pass for active
-    if (isActive && style.animation === 'glow') {
-      ctx.shadowColor = style.highlightColor
-      ctx.shadowBlur = 30 + 10 * Math.sin(animationProgress * Math.PI * 2)
-      ctx.fillStyle = style.highlightColor
-      ctx.globalAlpha = 0.6
-      ctx.fillText(word.text, currentX, baseY)
-      ctx.globalAlpha = 1
-    }
+      // Per-word background box: active word uses highlightColor, others use bgColor
+      if (style.bgEnabled && style.bgPerWord) {
+        const boxX = curX - wordPad
+        const boxY = lineBaseY - style.fontSize * 0.85 - wordPad * 0.5
+        const boxW = wm.width + wordPad * 2
+        const boxH = style.fontSize * 1.25 + wordPad
+        ctx.fillStyle = isActive ? style.highlightColor : style.bgColor
+        if (style.bgRadius > 0) {
+          ctx.beginPath()
+          ctx.roundRect(boxX, boxY, boxW, boxH, style.bgRadius)
+          ctx.fill()
+        } else {
+          ctx.fillRect(boxX, boxY, boxW, boxH)
+        }
+      }
 
-    // RGB split glitch extra pass for active
-    if (isActive && style.animation === 'glitch') {
-      const offset = 3 + 2 * Math.abs(Math.sin(animationProgress * Math.PI * 6))
+      // Animation transform on the active word
+      if (isActive) {
+        if (style.animation === 'scale') {
+          const scale = 1 + 0.15 * Math.sin(animationProgress * Math.PI)
+          ctx.translate(centerX, lineBaseY)
+          ctx.scale(scale, scale)
+          ctx.translate(-centerX, -lineBaseY)
+        } else if (style.animation === 'bounce') {
+          ctx.translate(0, -8 * Math.sin(animationProgress * Math.PI))
+        } else if (style.animation === 'fade') {
+          ctx.globalAlpha = Math.min(1, animationProgress * 4)
+        } else if (style.animation === 'shake') {
+          const intensity = 3 * (1 - Math.min(1, animationProgress * 2))
+          ctx.translate(
+            Math.sin(animationProgress * Math.PI * 7) * intensity,
+            Math.cos(animationProgress * Math.PI * 5) * intensity,
+          )
+        } else if (style.animation === 'punch') {
+          const overshoot = animationProgress < 0.25
+            ? 1.4 - 1.6 * animationProgress
+            : 1 + 0.06 * Math.sin((animationProgress - 0.25) * Math.PI / 0.75)
+          ctx.translate(centerX, lineBaseY)
+          ctx.scale(overshoot, overshoot)
+          ctx.translate(-centerX, -lineBaseY)
+        }
+      }
+
+      // Shadow
+      ctx.shadowColor    = isActive ? style.shadowColor : 'rgba(0,0,0,0.5)'
+      ctx.shadowBlur     = isActive ? style.shadowBlur  : style.shadowBlur * 0.5
+      ctx.shadowOffsetX  = 0
+      ctx.shadowOffsetY  = 2
+
+      // Stroke (drawn before fill so fill renders on top)
+      if (style.strokeWidth > 0 && style.strokeColor !== 'transparent') {
+        ctx.strokeStyle = style.strokeColor
+        ctx.lineWidth   = style.strokeWidth
+        ctx.lineJoin    = 'round'
+        ctx.miterLimit  = 2
+        ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
+        ctx.strokeText(wm.text, curX, lineBaseY)
+      }
+
+      // Fill: when bgPerWord is active, the box handles highlighting so text
+      // always uses the base color for maximum contrast against the box.
       ctx.shadowColor = 'transparent'
-      ctx.shadowBlur = 0
-      ctx.globalAlpha = 0.82
-      ctx.fillStyle = '#FF0044'
-      ctx.fillText(word.text, currentX - offset, baseY)
-      ctx.fillStyle = '#00EEFF'
-      ctx.fillText(word.text, currentX + offset, baseY)
-      ctx.globalAlpha = 1
-      ctx.fillStyle = '#FFFFFF'
-      ctx.fillText(word.text, currentX, baseY)
-    }
+      const fillColor = (style.bgEnabled && style.bgPerWord)
+        ? style.color
+        : (isActive ? style.highlightColor : style.color)
+      ctx.fillStyle = fillColor
+      ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
+      ctx.fillText(wm.text, curX, lineBaseY)
 
-    ctx.restore()
-    currentX += word.width + gap
+      // Neon glow: extra luminous pass on active word
+      if (isActive && style.animation === 'glow') {
+        ctx.shadowColor = style.highlightColor
+        ctx.shadowBlur  = 30 + 10 * Math.sin(animationProgress * Math.PI * 2)
+        ctx.fillStyle   = style.highlightColor
+        ctx.globalAlpha = 0.6
+        ctx.fillText(wm.text, curX, lineBaseY)
+        ctx.globalAlpha = 1
+      }
+
+      // RGB split glitch: chromatic aberration on active word
+      if (isActive && style.animation === 'glitch') {
+        const offset = 3 + 2 * Math.abs(Math.sin(animationProgress * Math.PI * 6))
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur  = 0
+        ctx.globalAlpha = 0.82
+        ctx.fillStyle   = '#FF0044'
+        ctx.fillText(wm.text, curX - offset, lineBaseY)
+        ctx.fillStyle   = '#00EEFF'
+        ctx.fillText(wm.text, curX + offset, lineBaseY)
+        ctx.globalAlpha = 1
+        ctx.fillStyle   = '#FFFFFF'
+        ctx.fillText(wm.text, curX, lineBaseY)
+      }
+
+      ctx.restore()
+      curX += wm.width + gap
+      globalWordIdx++
+    }
   }
 
   ctx.restore()

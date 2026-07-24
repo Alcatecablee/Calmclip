@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Trash2, Clock, GripVertical } from 'lucide-react'
+import { Plus, Trash2, Clock } from 'lucide-react'
 import type { Word } from '@/lib/captionEngine'
 
 interface Props {
@@ -128,7 +128,6 @@ export default function CaptionEditor({ words, onWordsChange, videoDuration: _vi
         <div className="max-h-[300px] overflow-y-auto space-y-1 pr-1">
           {words.map((word, i) => (
             <div key={i} className="flex items-center gap-1.5 group">
-              <GripVertical className="w-3 h-3" style={{ color: 'var(--text-faint)', opacity: 0.4 }} />
               <Input
                 value={word.text}
                 onChange={(e) => handleWordEdit(i, 'text', e.target.value)}

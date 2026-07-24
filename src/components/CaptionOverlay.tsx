@@ -22,16 +22,26 @@ export default function CaptionOverlay({ videoRef, captionGroups, captionStyle }
       const ctx = canvas.getContext('2d')
       if (!v || !ctx) { frameId = requestAnimationFrame(render); return }
 
-      const w = canvas.offsetWidth
-      const h = canvas.offsetHeight
-      if (w > 0 && h > 0 && (canvas.width !== w || canvas.height !== h)) {
-        canvas.width = w
-        canvas.height = h
+      // Scale the canvas backing store by devicePixelRatio for crisp rendering
+      // on HiDPI/retina displays. Drawing is done in CSS pixel coordinates via
+      // setTransform so callers never need to account for DPR manually.
+      const dpr  = window.devicePixelRatio || 1
+      const cssW = canvas.offsetWidth
+      const cssH = canvas.offsetHeight
+      const pxW  = Math.round(cssW * dpr)
+      const pxH  = Math.round(cssH * dpr)
+
+      if (cssW > 0 && cssH > 0 && (canvas.width !== pxW || canvas.height !== pxH)) {
+        canvas.width  = pxW
+        canvas.height = pxH
       }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      // Reset and apply the DPR scale each frame so clearRect covers the full
+      // canvas in CSS pixel space regardless of accumulated transforms.
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.clearRect(0, 0, cssW, cssH)
 
-      if (captionGroups.length === 0 || canvas.width === 0) {
+      if (captionGroups.length === 0 || cssW === 0) {
         frameId = requestAnimationFrame(render)
         return
       }
@@ -44,16 +54,17 @@ export default function CaptionOverlay({ videoRef, captionGroups, captionStyle }
         const wordStart = word?.startTime ?? 0
         const animProgress = Math.min(1, (t - wordStart) / wordDur)
 
-        const scaleFactor = Math.max(0.25, canvas.height / 1080)
+        // Scale style values from their 1080p baseline to the preview CSS height
+        const scaleFactor = Math.max(0.25, cssH / 1080)
         const scaledStyle = {
           ...captionStyle,
-          fontSize: Math.round(captionStyle.fontSize * scaleFactor),
+          fontSize:    Math.round(captionStyle.fontSize    * scaleFactor),
           strokeWidth: Math.max(1, Math.round(captionStyle.strokeWidth * scaleFactor)),
-          shadowBlur: Math.round(captionStyle.shadowBlur * scaleFactor),
-          bgRadius: Math.round(captionStyle.bgRadius * scaleFactor),
+          shadowBlur:  Math.round(captionStyle.shadowBlur  * scaleFactor),
+          bgRadius:    Math.round(captionStyle.bgRadius     * scaleFactor),
         }
 
-        drawCaptions(ctx, canvas.width, canvas.height, active, scaledStyle, animProgress)
+        drawCaptions(ctx, cssW, cssH, active, scaledStyle, animProgress)
       }
 
       frameId = requestAnimationFrame(render)

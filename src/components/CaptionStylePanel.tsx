@@ -176,6 +176,19 @@ export default function CaptionStylePanel({ style, onChange }: Props) {
               onCheckedChange={(v) => update('bgEnabled', v)}
             />
           </div>
+
+          {style.bgEnabled && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-xs" style={{ color: 'var(--text-muted)' }}>Per-word Boxes</Label>
+                <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>Box each word individually</p>
+              </div>
+              <Switch
+                checked={style.bgPerWord ?? false}
+                onCheckedChange={(v) => update('bgPerWord', v)}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
