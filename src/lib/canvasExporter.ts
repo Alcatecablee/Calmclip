@@ -95,9 +95,71 @@ const _EBML_ID_NAMES: Record<number, string> = {
   0x4D80: 'MuxingApp', 0x5741: 'WritingApp', 0x7BA9: 'Title', 0x4461: 'DateUTC',
 }
 
-// Modifies the Uint8Array in place, zeroing the content of WEBM_META_IDS
-// fields inside SegmentInfo. No-ops silently if the buffer is not valid WebM.
-function eraseWebmTagFields(a: Uint8Array): void {
+// Duration element (0x4489): 2-byte ID + 1-byte size VINT (value=8) + 8-byte float64 = 11 bytes.
+const DURATION_ELEM_BYTES = 11
+const EBML_ID_DURATION    = 0x4489  // float64 in SegmentInfo, units = TimestampScale (default 1ms)
+
+// Writes a Duration EBML element (11 bytes) at position pos in arr.
+// durationSec is converted to milliseconds (WebM default TimestampScale = 1,000,000 ns = 1 ms).
+function writeDurationElem(a: Uint8Array, pos: number, durationSec: number): void {
+  a[pos]   = 0x44          // Duration ID high byte
+  a[pos+1] = 0x89          // Duration ID low byte
+  a[pos+2] = 0x88          // size VINT: 0x80 | 8 = 8 bytes of data
+  const dv = new DataView(a.buffer, a.byteOffset + pos + 3, 8)
+  dv.setFloat64(0, durationSec * 1000, false)  // big-endian float64, value in ms
+}
+
+// Writes a Void EBML element (0xEC) filling exactly `totalBytes` bytes at pos.
+// Minimum size is 2 (1-byte ID + 1-byte zero-size VINT with no data).
+function writeVoidElem(a: Uint8Array, pos: number, totalBytes: number): void {
+  if (totalBytes < 2) return
+  a[pos] = 0xEC  // Void element ID
+  const dataSize = totalBytes - 2  // remaining after ID byte + 1-byte size VINT
+  if (dataSize <= 127) {
+    a[pos+1] = 0x80 | dataSize    // 1-byte VINT
+    a.fill(0, pos + 2, pos + totalBytes)
+  } else {
+    // 2-byte size VINT for larger padding (rare in SegmentInfo but handle it)
+    const actualData = totalBytes - 3
+    a[pos+1] = 0x40 | (actualData >> 8)
+    a[pos+2] = actualData & 0xFF
+    a.fill(0, pos + 3, pos + totalBytes)
+  }
+}
+
+// Attempts to write Duration into the first contiguous block of cleared ranges
+// that is large enough (>= DURATION_ELEM_BYTES). Remaining space gets a Void element.
+// Returns true if Duration was written.
+function tryInjectDuration(a: Uint8Array, ranges: [number, number][], durationSec: number): boolean {
+  if (ranges.length === 0 || durationSec <= 0) return false
+  ranges.sort((x, y) => x[0] - y[0])
+
+  let blockStart = ranges[0][0]
+  let blockEnd   = ranges[0][1]
+  for (let i = 1; i < ranges.length; i++) {
+    if (ranges[i][0] === blockEnd) {
+      blockEnd = ranges[i][1]  // adjacent range, extend the block
+    } else {
+      // Gap in ranges: try this block before moving on
+      if (blockEnd - blockStart >= DURATION_ELEM_BYTES) break
+      blockStart = ranges[i][0]
+      blockEnd   = ranges[i][1]
+    }
+  }
+  const blockSize = blockEnd - blockStart
+  if (blockSize < DURATION_ELEM_BYTES) return false
+
+  writeDurationElem(a, blockStart, durationSec)
+  const remaining = blockSize - DURATION_ELEM_BYTES
+  if (remaining >= 2) writeVoidElem(a, blockStart + DURATION_ELEM_BYTES, remaining)
+  return true
+}
+
+// Modifies the Uint8Array in place: zeros private metadata fields in SegmentInfo
+// and injects a Duration element using the freed space so players show correct length.
+// durationSec is the clip duration in seconds (from the export pipeline).
+// No-ops silently if the buffer is not valid WebM.
+function eraseWebmTagFields(a: Uint8Array, durationSec?: number): void {
   // Skip EBML header
   const h = ebmlReadId(a, 0)
   if (!h || h.id !== EBML_ID_HEADER) {
@@ -136,21 +198,39 @@ function eraseWebmTagFields(a: Uint8Array): void {
       const end = p + esz.size
       let ip = p
       const cleared: string[] = []
+      const clearedRanges: [number, number][] = []
+      let hasDuration = false
+
       while (ip < end) {
+        const elemStart = ip   // full element starts here (ID bytes)
         const ie = ebmlReadId(a, ip)
         if (!ie) break
         ip += ie.n
         const isz = ebmlReadSize(a, ip)
         if (!isz || isz.size < 0) break
         ip += isz.n
+
+        if (ie.id === EBML_ID_DURATION) hasDuration = true
+
         if (WEBM_META_IDS.has(ie.id) && isz.size > 0) {
           const name = _EBML_ID_NAMES[ie.id] ?? `0x${ie.id.toString(16)}`
           cleared.push(`${name}(${isz.size}B)`)
+          clearedRanges.push([elemStart, ip + isz.size])   // track full elem range
           a.fill(0, ip, ip + isz.size)
         }
         ip += isz.size
       }
-      console.log('[CalmClip] stripWebmMetadata: cleared fields:', cleared.join(', ') || '(none found)')
+
+      // Inject Duration into the freed space so VLC/players show correct length.
+      // We only inject if: (a) the caller provided durationSec, (b) no Duration
+      // element already existed, and (c) freed ranges form a contiguous block >= 11B.
+      let injected = false
+      if (!hasDuration && durationSec !== undefined && durationSec > 0) {
+        injected = tryInjectDuration(a, clearedRanges, durationSec)
+      }
+
+      console.log('[CalmClip] stripWebmMetadata: cleared fields:', cleared.join(', ') || '(none found)',
+        injected ? `| injected Duration=${durationSec?.toFixed(3)}s` : hasDuration ? '| Duration already present' : '| Duration not injected')
       return
     }
 
@@ -164,14 +244,15 @@ function eraseWebmTagFields(a: Uint8Array): void {
   console.warn('[CalmClip] stripWebmMetadata: SegmentInfo not found within 128 KB scan limit')
 }
 
-// Strips identifying metadata from a WebM blob by editing the EBML container
-// in place. Fast (pure JS, no WASM), non-destructive to frame data.
-async function stripWebmMetadata(blob: Blob): Promise<Blob> {
+// Strips identifying metadata from a WebM blob and injects Duration so players
+// can display total length and seek correctly. Pure JS, no WASM, no re-mux.
+async function stripWebmMetadata(blob: Blob, durationSec?: number): Promise<Blob> {
   console.log('[CalmClip] stripWebmMetadata: start, blob size=' + blob.size + 'B (' +
-    (blob.size / 1_048_576).toFixed(2) + ' MB)')
+    (blob.size / 1_048_576).toFixed(2) + ' MB)' +
+    (durationSec !== undefined ? ` durationSec=${durationSec.toFixed(3)}` : ''))
   const buf = await blob.arrayBuffer()
   const arr = new Uint8Array(buf)
-  eraseWebmTagFields(arr)
+  eraseWebmTagFields(arr, durationSec)
   const out = new Blob([arr], { type: blob.type })
   console.log('[CalmClip] stripWebmMetadata: done, output size=' + out.size + 'B')
   return out
