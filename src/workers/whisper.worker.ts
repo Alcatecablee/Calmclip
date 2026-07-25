@@ -127,11 +127,15 @@ self.addEventListener('message', async (event: MessageEvent) => {
     // @xenova/transformers and varies depending on the task and options passed.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: any = await _transcriber(audio, {
-      return_timestamps: 'word',
-      chunk_length_s:    30,
-      stride_length_s:   5,
+      return_timestamps:    'word',
+      chunk_length_s:       30,
+      stride_length_s:      5,
+      // Prevent the model from repeating the same 3-word sequence, which
+      // eliminates the hallucination loop where Whisper tiny.en gets stuck
+      // and emits the same phrase dozens of times.
+      no_repeat_ngram_size: 3,
       ...(language ? { language } : {}),
-      task:              'transcribe',
+      task:                 'transcribe',
     })
 
     // Strip Whisper's internal special tokens (e.g. [BLANK_AUDIO], [MUSIC],

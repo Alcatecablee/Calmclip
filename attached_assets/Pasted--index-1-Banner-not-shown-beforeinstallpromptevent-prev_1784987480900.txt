@@ -1,0 +1,187 @@
+(index):1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+index-DPW90kw3.js:9 [CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload
+index-DPW90kw3.js:10 [CalmClip] loadFfmpeg: discarding dead WASM instance (Aborted() detected), reloading with ST core
+index-DPW90kw3.js:9 [CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload
+index-DPW90kw3.js:12 [CalmClip Whisper] transcribeToTimedWords: audioBlob size: 4071186 duration: 127.302472
+ Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+ Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+ Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+ Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+ 2026-07-25 15:44:34.021705 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_16_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.023060 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Shape_4_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.067620 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.067965 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.069205 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_10_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.069335 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_11_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.069555 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.069735 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_12_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.070065 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/Constant_9_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.189765 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.189945 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.190960 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.191060 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.191205 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.191320 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.191430 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.191650 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.191745 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.191910 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.192020 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.192165 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.192935 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.193070 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.193395 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.193775 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.193940 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.194050 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.194165 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.194270 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.194350 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.194490 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/activation_fn/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.194610 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/activation_fn/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.194870 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/activation_fn/Constant_2_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.222450 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.222595 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.222670 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.222805 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.222915 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.223030 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.223765 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.223890 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.224040 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.224145 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.224265 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.224470 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.224695 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.224795 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.224955 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.225100 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.225205 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.225485 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.225595 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.225700 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.225820 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.225930 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.226160 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.226225 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.226300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.226360 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.226845 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.226935 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227000 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227155 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227215 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227280 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227365 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227490 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227595 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227675 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227780 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.3/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.227935 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228045 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228160 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228270 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228345 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228475 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/final_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228590 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/final_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228650 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228800 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/encoder_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228860 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228920 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.228975 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/encoder_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.229050 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.2/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.229155 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.0/self_attn_layer_norm/Constant_1_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+ 2026-07-25 15:44:34.229225 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '/model/decoder/layers.1/self_attn_layer_norm/Constant_output_0'. It is not used by any node and should be removed from the model.
+lt @ /assets/whisper.worker-DjQwR7EV.js:9
+index-DPW90kw3.js:12 [CalmClip Whisper] words from chunks: 654
+index-DPW90kw3.js:12 [CalmClip Whisper] done: 654 words
+(index):1 No output language was specified in a LanguageModel API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [de, en, es, fr, ja]
+The FetchEvent for "https://calmclip.video/" resulted in a network error response: the promise was resolved with an error response object.
