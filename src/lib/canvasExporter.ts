@@ -1040,7 +1040,35 @@ export async function exportVideoWithCaptions({
             const animProgress = wordDuration > 0
               ? Math.min(1, (currentTime - wordStart) / wordDuration)
               : 0
-            drawCaptions(ctx, vw, vh, activeCaption, scaledStyle, animProgress)
+
+            // In fit mode the video is letterboxed or pillarboxed within the
+            // canvas. Draw captions within the video content rect only, so
+            // they never land in the black bars. Fill mode: video covers the
+            // full canvas, so use the full dimensions directly.
+            if (cropMode === 'fill' || !video.videoWidth || !video.videoHeight) {
+              drawCaptions(ctx, vw, vh, activeCaption, scaledStyle, animProgress)
+            } else {
+              const fitScale = Math.min(vw / video.videoWidth, vh / video.videoHeight)
+              const capW = video.videoWidth  * fitScale
+              const capH = video.videoHeight * fitScale
+              const capX = (vw - capW) / 2
+              const capY = (vh - capH) / 2
+              // Re-scale style to the video content height, not the full canvas height.
+              const fitFactor = capH / 1080
+              const fitStyle = {
+                ...captionStyle,
+                fontSize:    Math.round(captionStyle.fontSize    * fitFactor),
+                strokeWidth: captionStyle.strokeWidth > 0
+                  ? Math.max(1, Math.round(captionStyle.strokeWidth * fitFactor))
+                  : 0,
+                shadowBlur:  Math.round(captionStyle.shadowBlur  * fitFactor),
+                bgRadius:    Math.round(captionStyle.bgRadius     * fitFactor),
+              }
+              ctx.save()
+              ctx.translate(capX, capY)
+              drawCaptions(ctx, capW, capH, activeCaption, fitStyle, animProgress)
+              ctx.restore()
+            }
           }
 
           // Report progress

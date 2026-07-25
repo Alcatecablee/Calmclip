@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { getActiveCaption, drawCaptions } from '../lib/captionEngine'
 import type { CaptionGroup, CaptionStyle } from '../lib/captionEngine'
+import type { CropMode } from '../lib/ffmpeg'
 
 interface Props {
   videoRef: React.RefObject<HTMLVideoElement | null>
   captionGroups: CaptionGroup[]
   captionStyle: CaptionStyle
+  cropMode?: CropMode
 }
 
-export default function CaptionOverlay({ videoRef, captionGroups, captionStyle }: Props) {
+export default function CaptionOverlay({ videoRef, captionGroups, captionStyle, cropMode }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -54,8 +56,22 @@ export default function CaptionOverlay({ videoRef, captionGroups, captionStyle }
         const wordStart = word?.startTime ?? 0
         const animProgress = Math.min(1, (t - wordStart) / wordDur)
 
-        // Scale style values from their 1080p baseline to the preview CSS height
-        const scaleFactor = Math.max(0.25, cssH / 1080)
+        // In fit (contain) mode the video is letterboxed or pillarboxed inside
+        // the container. Compute the video content rect so captions are drawn
+        // within the actual frame, not over the black bars.
+        // In fill (cover) mode the video occupies the entire container.
+        let drawX = 0, drawY = 0, drawW = cssW, drawH = cssH
+        if (cropMode !== 'fill' && v.videoWidth > 0 && v.videoHeight > 0) {
+          const scale = Math.min(cssW / v.videoWidth, cssH / v.videoHeight)
+          drawW = v.videoWidth  * scale
+          drawH = v.videoHeight * scale
+          drawX = (cssW - drawW) / 2
+          drawY = (cssH - drawH) / 2
+        }
+
+        // Scale style values from their 1080p baseline to the video content height
+        // (not the container height, which includes black bars in fit mode).
+        const scaleFactor = Math.max(0.25, drawH / 1080)
         const scaledStyle = {
           ...captionStyle,
           fontSize:    Math.round(captionStyle.fontSize    * scaleFactor),
@@ -70,7 +86,10 @@ export default function CaptionOverlay({ videoRef, captionGroups, captionStyle }
           bgRadius:    Math.round(captionStyle.bgRadius     * scaleFactor),
         }
 
-        drawCaptions(ctx, cssW, cssH, active, scaledStyle, animProgress)
+        ctx.save()
+        ctx.translate(drawX, drawY)
+        drawCaptions(ctx, drawW, drawH, active, scaledStyle, animProgress)
+        ctx.restore()
       }
 
       frameId = requestAnimationFrame(render)

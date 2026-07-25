@@ -456,6 +456,7 @@ export default function VideoPreview({
               videoRef={videoRef}
               captionGroups={captionGroups}
               captionStyle={captionStyle}
+              cropMode={cropMode}
             />
           )}
         </div>
