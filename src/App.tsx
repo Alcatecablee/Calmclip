@@ -1377,6 +1377,9 @@ export default function App() {
                             <TranscribeButton
                               videoFile={file}
                               videoDuration={duration}
+                              trimStart={trimStart}
+                              trimEnd={trimEnd}
+                              hasAudio={hasAudio}
                               onTranscribed={ws => { setWords(ws); if (ws.length > 0) recordToolUsage('captions').catch(() => {}) }}
                               onResult={(r, lang) => { setTranscriptResult(r); setTranscriptLanguage(lang) }}
                             />

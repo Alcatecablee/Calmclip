@@ -1,0 +1,300 @@
+(index):1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+index-D09ncdyt.js:9 [CalmClip] execOrThrow: calling ff.exec with args: -ss 0 -t 67.989333 -i sil_input.mp4 -vn -af silencedetect=noise=-50dB:d=1 -f null -
+index-D09ncdyt.js:9 [CalmClip FFmpeg] ffmpeg version 5.1.4 Copyright (c) 2000-2023 the FFmpeg developers
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   built with emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.40 (5c27e79dd0a9c4e27ef2326841698cdd4f6b5784)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   configuration: --target-os=none --arch=x86_32 --enable-cross-compile --disable-asm --disable-stripping --disable-programs --disable-doc --disable-debug --disable-runtime-cpudetect --disable-autodetect --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc --extra-cflags='-I/opt/include -O3 -msimd128 -sUSE_PTHREADS -pthread' --extra-cxxflags='-I/opt/include -O3 -msimd128 -sUSE_PTHREADS -pthread' --enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libopus --enable-zlib --enable-libwebp --enable-libfreetype --enable-libfribidi --enable-libass --enable-libzimg
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavutil      57. 28.100 / 57. 28.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavcodec     59. 37.100 / 59. 37.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavformat    59. 27.100 / 59. 27.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavdevice    59.  7.100 / 59.  7.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavfilter     8. 44.100 /  8. 44.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libswscale      6.  7.100 /  6.  7.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libswresample   4.  7.100 /  4.  7.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libpostproc    56.  6.100 / 56.  6.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'sil_input.mp4':
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     major_brand     : mp42
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     minor_version   : 0
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     compatible_brands: mp42isom
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Duration: 00:01:07.99, start: 0.000000, bitrate: 1713 kb/s
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 478x850, 1457 kb/s, 30 fps, 30 tbr, 90k tbn (default)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 253 kb/s (default)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Stream mapping:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Output #0, null, to 'pipe:':
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     major_brand     : mp42
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     minor_version   : 0
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     compatible_brands: mp42isom
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     encoder         : Lavf59.27.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:0(und): Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s (default)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       encoder         : Lavc59.37.100 pcm_s16le
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=N/A time=00:00:00.02 bitrate=N/A speed= 201x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=N/A time=00:00:31.59 bitrate=N/A speed=63.1x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=N/A time=00:01:04.57 bitrate=N/A speed=64.5x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] [silencedetect @ 0xee17b0] silence_start: 64.2305
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=N/A time=00:01:07.98 bitrate=N/A speed=64.9x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] video:0kB audio:12748kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+index-D09ncdyt.js:9 [CalmClip FFmpeg] [silencedetect @ 0xee17b0] silence_end: 67.9893 | silence_duration: 3.75885
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Aborted()
+index-D09ncdyt.js:9 [CalmClip] execOrThrow: ff.exec returned, exit code: 0
+index-D09ncdyt.js:9 [CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload
+index-D09ncdyt.js:10 [CalmClip] loadFfmpeg: discarding dead WASM instance (Aborted() detected), reloading with ST core
+index-D09ncdyt.js:9 [CalmClip] execOrThrow: calling ff.exec with args: -i whisper-in -vn -ar 16000 -ac 1 -f wav whisper-out.wav -y
+index-D09ncdyt.js:9 [CalmClip FFmpeg] ffmpeg version 5.1.4 Copyright (c) 2000-2023 the FFmpeg developers
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   built with emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.40 (5c27e79dd0a9c4e27ef2326841698cdd4f6b5784)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   configuration: --target-os=none --arch=x86_32 --enable-cross-compile --disable-asm --disable-stripping --disable-programs --disable-doc --disable-debug --disable-runtime-cpudetect --disable-autodetect --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc --extra-cflags='-I/opt/include -O3 -msimd128' --extra-cxxflags='-I/opt/include -O3 -msimd128' --disable-pthreads --disable-w32threads --disable-os2threads --enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libopus --enable-zlib --enable-libwebp --enable-libfreetype --enable-libfribidi --enable-libass --enable-libzimg
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavutil      57. 28.100 / 57. 28.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavcodec     59. 37.100 / 59. 37.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavformat    59. 27.100 / 59. 27.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavdevice    59.  7.100 / 59.  7.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libavfilter     8. 44.100 /  8. 44.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libswscale      6.  7.100 /  6.  7.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libswresample   4.  7.100 /  4.  7.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   libpostproc    56.  6.100 / 56.  6.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'whisper-in':
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     major_brand     : mp42
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     minor_version   : 0
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     compatible_brands: mp42isom
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Duration: 00:01:07.99, start: 0.000000, bitrate: 1713 kb/s
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 478x850, 1457 kb/s, 30 fps, 30 tbr, 90k tbn (default)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 253 kb/s (default)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Stream mapping:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Output #0, wav, to 'whisper-out.wav':
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     major_brand     : mp42
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     minor_version   : 0
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     compatible_brands: mp42isom
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     ISFT            : Lavf59.27.100
+index-D09ncdyt.js:9 [CalmClip FFmpeg]   Stream #0:0(und): Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s (default)
+index-D09ncdyt.js:9 [CalmClip FFmpeg]     Metadata:
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-D09ncdyt.js:9 [CalmClip FFmpeg]       encoder         : Lavc59.37.100 pcm_s16le
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=       1kB time=00:00:00.02 bitrate= 286.7kbits/s speed=11.2x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=     768kB time=00:00:26.53 bitrate= 237.1kbits/s speed=52.9x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=    1536kB time=00:00:54.35 bitrate= 231.5kbits/s speed=54.2x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] size=    2125kB time=00:01:07.98 bitrate= 256.0kbits/s speed=52.2x    
+index-D09ncdyt.js:9 [CalmClip FFmpeg] video:0kB audio:2125kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: 0.003585%
+index-D09ncdyt.js:9 [CalmClip FFmpeg] Aborted()
+index-D09ncdyt.js:9 [CalmClip] execOrThrow: ff.exec returned, exit code: 0
+index-D09ncdyt.js:9 [CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload
+index-D09ncdyt.js:12 [CalmClip Whisper] transcribeToTimedWords: audioBlob size: 2175736 duration: 67.989333
+index-D09ncdyt.js:12 [CalmClip Whisper] decoded Float32Array length: 1087829
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadConfig @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+Worker.postMessage
+promise @ index-D09ncdyt.js:12
+(anonymous) @ index-D09ncdyt.js:12
+await in (anonymous)
+yC @ index-D09ncdyt.js:12
+T @ index-D09ncdyt.js:12
+await in T
+onClick @ index-D09ncdyt.js:12
+Td @ index-D09ncdyt.js:8
+(anonymous) @ index-D09ncdyt.js:8
+cn @ index-D09ncdyt.js:8
+Ad @ index-D09ncdyt.js:8
+gp @ index-D09ncdyt.js:9
+mp @ index-D09ncdyt.js:9
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadTokenizer @ /assets/whisper.worker-DjQwR7EV.js:152
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+Worker.postMessage
+promise @ index-D09ncdyt.js:12
+(anonymous) @ index-D09ncdyt.js:12
+await in (anonymous)
+yC @ index-D09ncdyt.js:12
+T @ index-D09ncdyt.js:12
+await in T
+onClick @ index-D09ncdyt.js:12
+Td @ index-D09ncdyt.js:8
+(anonymous) @ index-D09ncdyt.js:8
+cn @ index-D09ncdyt.js:8
+Ad @ index-D09ncdyt.js:8
+gp @ index-D09ncdyt.js:9
+mp @ index-D09ncdyt.js:9
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+await in from_pretrained
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+Worker.postMessage
+promise @ index-D09ncdyt.js:12
+(anonymous) @ index-D09ncdyt.js:12
+await in (anonymous)
+yC @ index-D09ncdyt.js:12
+T @ index-D09ncdyt.js:12
+await in T
+onClick @ index-D09ncdyt.js:12
+Td @ index-D09ncdyt.js:8
+(anonymous) @ index-D09ncdyt.js:8
+cn @ index-D09ncdyt.js:8
+Ad @ index-D09ncdyt.js:8
+gp @ index-D09ncdyt.js:9
+mp @ index-D09ncdyt.js:9
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadTokenizer @ /assets/whisper.worker-DjQwR7EV.js:152
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+Worker.postMessage
+promise @ index-D09ncdyt.js:12
+(anonymous) @ index-D09ncdyt.js:12
+await in (anonymous)
+yC @ index-D09ncdyt.js:12
+T @ index-D09ncdyt.js:12
+await in T
+onClick @ index-D09ncdyt.js:12
+Td @ index-D09ncdyt.js:8
+(anonymous) @ index-D09ncdyt.js:8
+cn @ index-D09ncdyt.js:8
+Ad @ index-D09ncdyt.js:8
+gp @ index-D09ncdyt.js:9
+mp @ index-D09ncdyt.js:9
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadConfig @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+await in (anonymous)
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+Worker.postMessage
+promise @ index-D09ncdyt.js:12
+(anonymous) @ index-D09ncdyt.js:12
+await in (anonymous)
+yC @ index-D09ncdyt.js:12
+T @ index-D09ncdyt.js:12
+await in T
+onClick @ index-D09ncdyt.js:12
+Td @ index-D09ncdyt.js:8
+(anonymous) @ index-D09ncdyt.js:8
+cn @ index-D09ncdyt.js:8
+Ad @ index-D09ncdyt.js:8
+gp @ index-D09ncdyt.js:9
+mp @ index-D09ncdyt.js:9
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadTokenizer @ /assets/whisper.worker-DjQwR7EV.js:152
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadTokenizer @ /assets/whisper.worker-DjQwR7EV.js:152
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadConfig @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+await in from_pretrained
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+sw.js:174 [CalmClip SW] CDN fetch failed: TypeError: Failed to fetch
+    at cdnCacheFirst (sw.js:169:23)
+cdnCacheFirst @ sw.js:174
+await in cdnCacheFirst
+(anonymous) @ sw.js:129
+network request
+getFile @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+constructSession @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+await in from_pretrained
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+The FetchEvent for "https://huggingface.co/Xenova/whisper-tiny/resolve/main/onnx/decoder_model_merged_quantized.onnx" resulted in a network error response: the promise was resolved with an error response object.
+whisper.worker-DjQwR7EV.js:150 Unable to determine content-length from response headers. Will expand buffer when needed.
+readResponse @ /assets/whisper.worker-DjQwR7EV.js:150
+getModelFile @ /assets/whisper.worker-DjQwR7EV.js:150
+await in getModelFile
+getModelJSON @ /assets/whisper.worker-DjQwR7EV.js:150
+loadConfig @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+from_pretrained @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170
+await in (anonymous)
+loadItems @ /assets/whisper.worker-DjQwR7EV.js:170
+pipeline @ /assets/whisper.worker-DjQwR7EV.js:170
+(anonymous) @ /assets/whisper.worker-DjQwR7EV.js:170

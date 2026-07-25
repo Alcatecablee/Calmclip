@@ -34,14 +34,16 @@ async function blobToFloat32Array(blob: Blob): Promise<Float32Array> {
   }
 }
 
-function distributeWords(transcript: string, durationSeconds: number): Word[] {
+// Distributes words evenly across a duration starting at startOffset.
+// Used as a fallback when Whisper returns no per-word timestamps.
+function distributeWords(transcript: string, durationSeconds: number, startOffset = 0): Word[] {
   const tokens = transcript.trim().split(/\s+/).filter(Boolean)
   if (tokens.length === 0) return []
   const avgDur = durationSeconds / tokens.length
   return tokens.map((text, i) => ({
     text,
-    startTime: parseFloat((i * avgDur).toFixed(3)),
-    endTime: parseFloat(((i + 1) * avgDur).toFixed(3)),
+    startTime: parseFloat((startOffset + i * avgDur).toFixed(3)),
+    endTime: parseFloat((startOffset + (i + 1) * avgDur).toFixed(3)),
   }))
 }
 
@@ -50,12 +52,24 @@ export interface TranscribeHandle {
   cancel:  () => void
 }
 
+// transcribeToTimedWords runs Whisper on the provided audio blob and returns
+// word-level timed transcription.
+//
+// audioBlob must be 16 kHz mono WAV covering [trimStart, trimEnd] of the
+// original video. Whisper returns timestamps relative to 0 (the start of the
+// WAV); this function offsets them by trimStart so all returned Word objects
+// carry absolute video timestamps that match videoRef.currentTime.
+//
+// videoDurationSeconds should be the duration of the audio blob itself
+// (trimEnd - trimStart), not the full video duration, so the fallback word
+// distribution and progress estimation operate over the correct range.
 export function transcribeToTimedWords(
   audioBlob: Blob,
   videoDurationSeconds: number,
   onStatusUpdate?: (msg: string) => void,
   model?: string,
   language?: string,
+  trimStart = 0,
 ): TranscribeHandle {
   let workerRef:  Worker | null                         = null
   let rejectRef:  ((reason?: unknown) => void) | null   = null
@@ -134,8 +148,11 @@ export function transcribeToTimedWords(
               .filter(c => c.timestamp && c.timestamp[0] !== null)
               .map(c => ({
                 text: c.text.trim(),
-                startTime: c.timestamp[0] ?? 0,
-                endTime: c.timestamp[1] ?? (c.timestamp[0]! + 0.5),
+                // Whisper timestamps are 0-based relative to the start of the
+                // audio blob. Offset by trimStart to produce absolute video
+                // timestamps that align with videoRef.currentTime.
+                startTime: trimStart + (c.timestamp[0] ?? 0),
+                endTime:   trimStart + (c.timestamp[1] ?? ((c.timestamp[0] ?? 0) + 0.5)),
               }))
               .filter(w => w.text.length > 0)
             console.log(TAG, 'words from chunks:', words.length)
@@ -143,13 +160,18 @@ export function transcribeToTimedWords(
 
           if (words.length === 0) {
             console.warn(TAG, 'no timestamp chunks, using distributeWords fallback')
-            words = distributeWords(transcript, videoDurationSeconds)
+            // Distribute words across the trimmed range starting at trimStart.
+            words = distributeWords(transcript, videoDurationSeconds, trimStart)
           }
 
+          // Clamp to the absolute trim range [trimStart, trimStart + audioDuration].
+          // Words outside this range indicate a Whisper timing error; clamping
+          // prevents captions from appearing at impossible video positions.
+          const absEnd = trimStart + videoDurationSeconds
           words = words.map(w => ({
             ...w,
-            startTime: Math.max(0, Math.min(w.startTime, videoDurationSeconds)),
-            endTime: Math.max(0, Math.min(w.endTime, videoDurationSeconds)),
+            startTime: Math.max(trimStart, Math.min(w.startTime, absEnd)),
+            endTime:   Math.max(trimStart, Math.min(w.endTime,   absEnd)),
           }))
 
           console.log(TAG, 'done:', words.length, 'words')

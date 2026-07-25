@@ -42,6 +42,9 @@ type Phase = typeof PHASES[keyof typeof PHASES]
 interface Props {
   videoFile:      File | null
   videoDuration:  number
+  trimStart?:     number
+  trimEnd?:       number
+  hasAudio?:      boolean
   onTranscribed:  (words: Word[]) => void
   onResult?:      (result: TranscriptResult, language?: string) => void
   onProGate?:     () => void
@@ -71,7 +74,7 @@ function computeOverallPct(msg: string): number | null {
   return null
 }
 
-export default function TranscribeButton({ videoFile, videoDuration, onTranscribed, onResult, onProGate }: Props) {
+export default function TranscribeButton({ videoFile, videoDuration, trimStart = 0, trimEnd, hasAudio = true, onTranscribed, onResult, onProGate }: Props) {
   const [phase, setPhase]           = useState<Phase>(PHASES.idle)
   const [, setStatus]               = useState('')
   const [overallPct, setOverallPct] = useState(0)
@@ -132,9 +135,17 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
     setError(null)
     setStatus('')
 
+    // The audio duration is the trimmed segment, not the full video.
+    // This drives progress estimation and the distributeWords fallback.
+    const resolvedTrimStart = trimStart ?? 0
+    const resolvedTrimEnd   = trimEnd ?? null
+    const audioDuration = resolvedTrimEnd !== null
+      ? Math.max(1, resolvedTrimEnd - resolvedTrimStart)
+      : (videoDuration || 60)
+
     let audioBlob: Blob
     try {
-      audioBlob = await extractAudioFromVideo(videoFile)
+      audioBlob = await extractAudioFromVideo(videoFile, resolvedTrimStart, resolvedTrimEnd)
     } catch (e) {
       setPhase(PHASES.error)
       setError('Failed to extract audio: ' + (e as Error).message)
@@ -150,7 +161,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
     try {
       const handle = transcribeToTimedWords(
         audioBlob,
-        videoDuration || 60,
+        audioDuration,
         (msg) => {
           setStatus(msg)
           const pct = computeOverallPct(msg)
@@ -161,7 +172,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
             setPhase(PHASES.loading)
           } else if (msg.startsWith('Transcribing')) {
             setPhase(PHASES.transcribing)
-            startTranscribeFallback(videoDuration || 60)
+            startTranscribeFallback(audioDuration)
           } else if (msg === 'Done') {
             clearFallback()
             setPhase(PHASES.done)
@@ -169,6 +180,7 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
         },
         modelId,
         language !== 'auto' ? language : undefined,
+        resolvedTrimStart,
       )
       cancelTranscribeRef.current = handle.cancel
       const result = await handle.promise
@@ -232,6 +244,16 @@ export default function TranscribeButton({ videoFile, videoDuration, onTranscrib
     setPhase(PHASES.idle)
     setError(null)
     setStatus('')
+  }
+
+  // A video without an audio track cannot be transcribed. Show a clear message
+  // rather than letting the extraction fail silently inside FFmpeg.
+  if (!hasAudio && videoFile) {
+    return (
+      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+        No audio track detected. Transcription requires a video with speech.
+      </p>
+    )
   }
 
   const isProcessing = phase !== PHASES.idle && phase !== PHASES.done && phase !== PHASES.error
