@@ -86,7 +86,6 @@ export function transcribeToTimedWords(
 
     onStatusUpdate?.('Decoding audio...')
     const audio = await blobToFloat32Array(audioBlob)
-    console.log(TAG, 'decoded Float32Array length:', audio.length)
 
     return new Promise<{ transcript: string; words: Word[]; detectedLanguage?: string }>((resolve, reject) => {
       rejectRef = reject

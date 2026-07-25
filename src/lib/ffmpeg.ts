@@ -64,7 +64,6 @@ export async function runFfmpegWithWatchdog(
   staleMs = EXEC_STALE_FLOOR_MS,
   onFirstLog?: () => void,
 ): Promise<void> {
-  console.log('[CalmClip] execOrThrow: calling ff.exec with args:', args.join(' '))
   const logLines: string[] = []
   let lastActivityMs    = Date.now()
   let firstLogMs        = 0      // when the first log line arrived
@@ -73,7 +72,6 @@ export async function runFfmpegWithWatchdog(
 
   const logHandler = ({ message }: { message: string }) => {
     logLines.push(message)
-    console.log('[CalmClip FFmpeg]', message)  // live output for debugging
     lastActivityMs = Date.now()
     if (!firstLogFired) {
       firstLogFired  = true
@@ -130,7 +128,6 @@ export async function runFfmpegWithWatchdog(
   let ret: number
   try {
     ret = (await Promise.race([ff.exec(args), stalePromise])) as number
-    console.log('[CalmClip] execOrThrow: ff.exec returned, exit code:', ret)
   } catch (raw) {
     // Stale timeout or WASM rejection: terminate the worker so the next export
     // starts fresh instead of blocking on a dead instance.
@@ -877,16 +874,11 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
       ]
       if (stripMetadata) args.push('-map_metadata', '-1')
       args.push('-y', outputName)
-      console.log('[CalmClip] exportVideo: calling execOrThrow (filter_complex path)')
       await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration), signalStarted)
-      console.log('[CalmClip] exportVideo: execOrThrow returned')
     }
-    console.log('[CalmClip] exportVideo: calling onProgress(99)')
     onProgress(99)
-    console.log('[CalmClip] exportVideo: onProgress(99) done, calling ff.readFile')
 
     const result = (await ff.readFile(outputName)) as Uint8Array
-    console.log('[CalmClip] exportVideo: ff.readFile returned, byteLength:', result?.byteLength)
     if (!result || result.byteLength === 0) {
       throw new Error('FFmpeg produced an empty output file. The export may have failed silently. Try reducing quality or simplifying the edits.')
     }
@@ -1002,15 +994,12 @@ async function exportWithCuts(p: CutsExportParams): Promise<Uint8Array> {
     if (stripMetadata) args.push('-map_metadata', '-1')
     args.push('-y', outputName)
 
-    console.log('[CalmClip] exportWithCuts: calling execOrThrow')
     await runFfmpegWithWatchdog(ff, args, calcStaleMs(outDuration))
-    console.log('[CalmClip] exportWithCuts: execOrThrow returned, calling ff.readFile')
     // Signal 99 % before readFile so the bar advances past whatever FFmpeg's
     // last progress event reported. readFile produces no progress events, so
     // without this the bar stays at an intermediate value until "done" appears.
     p.onProgress?.(99)
     const result = (await ff.readFile(outputName)) as Uint8Array
-    console.log('[CalmClip] exportWithCuts: ff.readFile returned, byteLength:', result?.byteLength)
     if (!result || result.byteLength === 0) {
       throw new Error('FFmpeg produced an empty output file. The export may have failed silently. Try reducing quality or simplifying the edits.')
     }

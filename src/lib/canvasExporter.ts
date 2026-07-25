@@ -344,7 +344,6 @@ function rewriteWebm(
 
   if (durationElement && (durationElement.size === 4 || durationElement.size === 8)) {
     writeFloat(source, durationElement.dataStart, durationElement.size, durationTicks)
-    console.log('[CalmClip] stripWebmMetadata: updated existing Duration=' + durationSec.toFixed(3) + 's')
     return source
   }
   if (durationElement) {
@@ -387,7 +386,6 @@ function rewriteWebm(
     )
   }
 
-  console.log('[CalmClip] stripWebmMetadata: appended Duration=' + durationSec.toFixed(3) + 's')
   return output
 }
 
@@ -398,16 +396,12 @@ export async function stripWebmMetadata(
   durationSec: number,
   sanitizeMetadata = true,
 ): Promise<Blob> {
-  console.log('[CalmClip] stripWebmMetadata: start, blob size=' + blob.size + 'B (' +
-    (blob.size / 1_048_576).toFixed(2) + ' MB) durationSec=' + durationSec.toFixed(3))
   const source = new Uint8Array(await blob.arrayBuffer())
   const output = rewriteWebm(source, durationSec, sanitizeMetadata)
   if (output.byteLength === 0) {
     throw new Error('WebM finalization produced an empty video. The export cannot be downloaded safely.')
   }
-  const finalized = new Blob([output.buffer as ArrayBuffer], { type: blob.type || 'video/webm' })
-  console.log('[CalmClip] stripWebmMetadata: done, output size=' + finalized.size + 'B')
-  return finalized
+  return new Blob([output.buffer as ArrayBuffer], { type: blob.type || 'video/webm' })
 }
 
 interface ExportOptions {
@@ -621,7 +615,6 @@ export async function exportVideoWithCaptions({
   onPhase?.('Preparing audio...')
   if (hasAudio) {
     audioBundle = await buildAudioChain(videoElement.src, denoiseAudio, loudnessTarget)
-    console.log('[CalmClip] canvasExport: audio chain ready, ctx.state=' + audioBundle.ctx.state)
   }
 
   // Signal the UI now so the phase label reads "Rendering video..." rather than
@@ -787,7 +780,6 @@ export async function exportVideoWithCaptions({
         if (blob.size === 0) {
           throw new Error('The finalized export is empty. The video cannot be downloaded safely.')
         }
-        console.log('[CalmClip] canvasExport: resolving with final blob', blob.size + 'B')
         resolve(blob)
       }).catch(error => {
         console.error('[CalmClip] canvasExport: finalization error:', error)
@@ -925,9 +917,6 @@ export async function exportVideoWithCaptions({
       // are all known. This value is written into the WebM Duration element by
       // recorder.onstop so that players can display the correct total length.
       exportDurationSec = effectiveDuration(clipStart, clipEnd, skipRanges)
-      console.log('[CalmClip] canvasExport: video loaded,',
-        `duration=${totalDuration.toFixed(3)}s clip=[${clipStart.toFixed(3)}, ${clipEnd.toFixed(3)}]`,
-        `clipDuration=${clipDuration.toFixed(3)}s effectiveDuration=${exportDurationSec.toFixed(3)}s`)
 
       let finished  = false
       let isSeeking = false
@@ -935,7 +924,6 @@ export async function exportVideoWithCaptions({
       function finishExport() {
         if (finished || settled) return
         finished = true
-        console.log('[CalmClip] canvasExport: finishExport called, stopping recorder')
         // 0.98 rather than 1: the remaining 2% is covered by the metadata-strip
         // phase so the progress bar does not read 100% while "Removing metadata..."
         // is still running. ExportPanel shows the done state only after resolve().
@@ -949,8 +937,6 @@ export async function exportVideoWithCaptions({
 
       video.onseeked = () => {
         video.onseeked = null
-        console.log('[CalmClip] canvasExport: seeked to clipStart=' + clipStart.toFixed(3) +
-          's, starting recorder (timeslice=100ms)')
         try {
           recorder.start(100)
         } catch (error) {
@@ -961,10 +947,7 @@ export async function exportVideoWithCaptions({
         if (audioBundle) {
           audioBundle.audioEl.currentTime = clipStart
           audioBundle.ctx.resume()
-            .then(() => {
-              console.log('[CalmClip] canvasExport: AudioContext resumed, state=' + audioBundle!.ctx.state)
-              return audioBundle!.audioEl.play()
-            })
+            .then(() => audioBundle!.audioEl.play())
             .catch(failExport)
         }
 

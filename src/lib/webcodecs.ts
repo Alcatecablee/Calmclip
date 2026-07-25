@@ -516,8 +516,6 @@ export async function exportVideoWebCodecs(opts: ExportOptions): Promise<Uint8Ar
         // isRotatedCCW=true signals the CW canvas path (left→top); false signals CCW (right→top).
         const tkhdMatrix = vTrack.matrix as number[] | undefined
         const matrixSin = tkhdMatrix?.[1]
-        // eslint-disable-next-line no-console
-        console.log('[webcodecs] tkhd matrix[1] =', matrixSin, '→ needsLeftToTop (rotate=90 CW display) =', typeof matrixSin === 'number' && matrixSin < 0)
         isRotatedCCW = typeof matrixSin === 'number' && matrixSin < 0
       }
 
