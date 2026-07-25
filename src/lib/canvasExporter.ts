@@ -91,12 +91,19 @@ function ebmlReadSize(a: Uint8Array, p: number): { size: number; n: number } | n
   return { size: allSet ? -1 : size, n }
 }
 
+const _EBML_ID_NAMES: Record<number, string> = {
+  0x4D80: 'MuxingApp', 0x5741: 'WritingApp', 0x7BA9: 'Title', 0x4461: 'DateUTC',
+}
+
 // Modifies the Uint8Array in place, zeroing the content of WEBM_META_IDS
 // fields inside SegmentInfo. No-ops silently if the buffer is not valid WebM.
 function eraseWebmTagFields(a: Uint8Array): void {
   // Skip EBML header
   const h = ebmlReadId(a, 0)
-  if (!h || h.id !== EBML_ID_HEADER) return
+  if (!h || h.id !== EBML_ID_HEADER) {
+    console.warn('[CalmClip] stripWebmMetadata: EBML header not found, skipping erase')
+    return
+  }
   let p = h.n
   const hs = ebmlReadSize(a, p)
   if (!hs || hs.size < 0) return
@@ -104,11 +111,16 @@ function eraseWebmTagFields(a: Uint8Array): void {
 
   // Enter Segment (size may be -1 for streaming/live containers)
   const seg = ebmlReadId(a, p)
-  if (!seg || seg.id !== EBML_ID_SEGMENT) return
+  if (!seg || seg.id !== EBML_ID_SEGMENT) {
+    console.warn('[CalmClip] stripWebmMetadata: Segment element not found, skipping erase')
+    return
+  }
   p += seg.n
   const ss = ebmlReadSize(a, p)
   if (!ss) return
   p += ss.n
+  console.log('[CalmClip] stripWebmMetadata: Segment found, size=' +
+    (ss.size < 0 ? 'unknown (streaming WebM)' : ss.size + 'B'))
 
   // Scan Segment children; SegmentInfo always precedes Tracks and Clusters
   const limit = Math.min(a.length, p + 131_072)
@@ -123,6 +135,7 @@ function eraseWebmTagFields(a: Uint8Array): void {
     if (el.id === EBML_ID_SEG_INFO && esz.size > 0) {
       const end = p + esz.size
       let ip = p
+      const cleared: string[] = []
       while (ip < end) {
         const ie = ebmlReadId(a, ip)
         if (!ie) break
@@ -131,26 +144,37 @@ function eraseWebmTagFields(a: Uint8Array): void {
         if (!isz || isz.size < 0) break
         ip += isz.n
         if (WEBM_META_IDS.has(ie.id) && isz.size > 0) {
+          const name = _EBML_ID_NAMES[ie.id] ?? `0x${ie.id.toString(16)}`
+          cleared.push(`${name}(${isz.size}B)`)
           a.fill(0, ip, ip + isz.size)
         }
         ip += isz.size
       }
+      console.log('[CalmClip] stripWebmMetadata: cleared fields:', cleared.join(', ') || '(none found)')
       return
     }
 
-    if (el.id === EBML_ID_TRACKS) return  // Passed SegmentInfo, stop
+    if (el.id === EBML_ID_TRACKS) {
+      console.warn('[CalmClip] stripWebmMetadata: reached Tracks before SegmentInfo')
+      return
+    }
     if (esz.size < 0) break               // Unknown-size non-Segment element
     p += esz.size
   }
+  console.warn('[CalmClip] stripWebmMetadata: SegmentInfo not found within 128 KB scan limit')
 }
 
 // Strips identifying metadata from a WebM blob by editing the EBML container
 // in place. Fast (pure JS, no WASM), non-destructive to frame data.
 async function stripWebmMetadata(blob: Blob): Promise<Blob> {
+  console.log('[CalmClip] stripWebmMetadata: start, blob size=' + blob.size + 'B (' +
+    (blob.size / 1_048_576).toFixed(2) + ' MB)')
   const buf = await blob.arrayBuffer()
   const arr = new Uint8Array(buf)
   eraseWebmTagFields(arr)
-  return new Blob([arr], { type: blob.type })
+  const out = new Blob([arr], { type: blob.type })
+  console.log('[CalmClip] stripWebmMetadata: done, output size=' + out.size + 'B')
+  return out
 }
 
 interface ExportOptions {
@@ -335,12 +359,19 @@ export async function exportVideoWithCaptions({
       : []),
   ]
 
+  console.log('[CalmClip] canvasExport: start',
+    `trimStart=${trimStart.toFixed(3)}s trimEnd=${trimEnd?.toFixed(3) ?? 'null'}`,
+    `res=${targetWidth ?? 'src'}x${targetHeight ?? 'src'}`,
+    `hasAudio=${hasAudio} stripMetadata=${stripMetadata}`,
+    `skipRanges=${skipRanges.length} denoise=${denoiseAudio} loudness=${loudnessTarget}`)
+
   // Build the audio processing chain before the Promise so AudioWorklet.addModule()
   // can be awaited. Audio setup errors must remain visible to the user.
   let audioBundle: AudioBundle | null = null
   onPhase?.('Preparing audio...')
   if (hasAudio) {
     audioBundle = await buildAudioChain(videoElement.src, denoiseAudio, loudnessTarget)
+    console.log('[CalmClip] canvasExport: audio chain ready, ctx.state=' + audioBundle.ctx.state)
   }
 
   // Signal the UI now so the phase label reads "Rendering video..." rather than
@@ -407,6 +438,8 @@ export async function exportVideoWithCaptions({
           : MediaRecorder.isTypeSupported('video/webm')
             ? 'video/webm'
             : ''
+    console.log('[CalmClip] canvasExport: MediaRecorder mimeType=' + (mimeType || '(none supported)'),
+      `canvas=${vw}x${vh} audioTracks=${audioBundle ? audioBundle.dest.stream.getAudioTracks().length : 0}`)
     if (!mimeType) {
       canvasStream.getTracks().forEach(track => track.stop())
       if (audioBundle) {
@@ -479,6 +512,8 @@ export async function exportVideoWithCaptions({
       settled = true
       cleanup()
       const recorded = new Blob(chunks, { type: mimeType })
+      console.log('[CalmClip] canvasExport: recorder stopped,',
+        `chunks=${chunks.length} recorded=${recorded.size}B (${(recorded.size / 1_048_576).toFixed(2)} MB)`)
       if (recorded.size === 0) {
         reject(new Error('The video recorder produced an empty file. Try a shorter clip or a lower output resolution.'))
         return
@@ -491,8 +526,10 @@ export async function exportVideoWithCaptions({
         if (blob.size === 0) {
           throw new Error('The finalized export is empty. The video cannot be downloaded safely.')
         }
+        console.log('[CalmClip] canvasExport: resolving with final blob', blob.size + 'B')
         resolve(blob)
       }).catch(error => {
+        console.error('[CalmClip] canvasExport: finalization error:', error)
         reject(error instanceof Error ? error : new Error(String(error)))
       })
     }
@@ -623,6 +660,9 @@ export async function exportVideoWithCaptions({
       const clipStart      = Math.max(0, trimStart)
       const clipEnd        = trimEnd !== null ? Math.min(trimEnd, totalDuration) : totalDuration
       const clipDuration   = Math.max(0.1, clipEnd - clipStart)
+      console.log('[CalmClip] canvasExport: video loaded,',
+        `duration=${totalDuration.toFixed(3)}s clip=[${clipStart.toFixed(3)}, ${clipEnd.toFixed(3)}]`,
+        `clipDuration=${clipDuration.toFixed(3)}s`)
 
       let finished  = false
       let isSeeking = false
@@ -630,6 +670,7 @@ export async function exportVideoWithCaptions({
       function finishExport() {
         if (finished || settled) return
         finished = true
+        console.log('[CalmClip] canvasExport: finishExport called, stopping recorder')
         // 0.98 rather than 1: the remaining 2% is covered by the metadata-strip
         // phase so the progress bar does not read 100% while "Removing metadata..."
         // is still running. ExportPanel shows the done state only after resolve().
@@ -643,6 +684,8 @@ export async function exportVideoWithCaptions({
 
       video.onseeked = () => {
         video.onseeked = null
+        console.log('[CalmClip] canvasExport: seeked to clipStart=' + clipStart.toFixed(3) +
+          's, starting recorder (timeslice=100ms)')
         try {
           recorder.start(100)
         } catch (error) {
@@ -653,7 +696,10 @@ export async function exportVideoWithCaptions({
         if (audioBundle) {
           audioBundle.audioEl.currentTime = clipStart
           audioBundle.ctx.resume()
-            .then(() => audioBundle!.audioEl.play())
+            .then(() => {
+              console.log('[CalmClip] canvasExport: AudioContext resumed, state=' + audioBundle!.ctx.state)
+              return audioBundle!.audioEl.play()
+            })
             .catch(failExport)
         }
 
@@ -674,6 +720,8 @@ export async function exportVideoWithCaptions({
             const hit = skipRanges.find(([s, e]) => currentTime >= s && currentTime < e)
             if (hit) {
               const skipTo = Math.min(hit[1], clipEnd)
+              console.log('[CalmClip] canvasExport: skip range hit [' +
+                hit[0].toFixed(3) + ', ' + hit[1].toFixed(3) + '] -> seekTo=' + skipTo.toFixed(3))
               isSeeking = true
               // Pause the audio element immediately so no content from the
               // skipped region is routed through the Web Audio graph and
