@@ -30,6 +30,33 @@ AAC frames are independently decodable (no inter-frame prediction), so no pre-ro
 
 Setting `audioEl.src = blobUrl` on a newly created `Audio` element does not always begin buffering in Safari. Call `audioEl.load()` immediately after setting `src` before passing the element to `createMediaElementSource`.
 
+## stripMetadataFromWebm (FFmpeg) is unreliable for canvas MediaRecorder output
+
+Do NOT route canvas exports through `stripMetadataFromWebm` (the FFmpeg remux path).
+Two separate failure modes, both confirmed in production console logs:
+
+1. **MT core Aborted()** -- the multi-threaded WASM core fires `Aborted()` after every
+   `exec()` call as its pthreads runtime tears down. The instance is then dead and the
+   next export must reload from scratch.
+
+2. **ST core 58-frame truncation** -- the single-threaded fallback core only copies ~2 s
+   of video when audio and video timestamps diverge. This happens because the Web Audio
+   API MediaStream timestamps are based on `AudioContext.currentTime`, which may be
+   nonzero if the context was alive while FFmpeg WASM was loading (~150 s in observed
+   logs). The muxer interleaver treats audio-ahead-of-video as a sync error and stops
+   writing video frames, producing a file where only audio plays.
+
+**Fix:** `canvasExporter.ts` now uses `stripWebmMetadata()` -- a pure-JS EBML editor
+that zeros MuxingApp (0x4D80), WritingApp (0x5741), Title (0x7BA9), and DateUTC (0x4461)
+directly in the container bytes, without any FFmpeg remux. Fast, reliable, no WASM.
+
+**Why:** A MediaRecorder WebM from Chrome contains no camera metadata (GPS, device
+serial, EXIF). The only identifying fields are the three above. Zeroing them in-place
+satisfies the privacy invariant without touching frame data or container structure.
+
+**How to apply:** `stripMetadataFromWebm` in `ffmpeg.ts` is kept for any future use
+outside canvas exports, but must not be called on streaming/live WebM from MediaRecorder.
+
 ## AudioContext early-exit paths must fully clean up
 
 When exiting before the recorder starts (mimeType check, MediaRecorder construction error), the full cleanup sequence is:
