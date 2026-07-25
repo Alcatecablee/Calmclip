@@ -968,17 +968,30 @@ export async function exportVideoWithCaptions({
             const hit = skipRanges.find(([s, e]) => currentTime >= s && currentTime < e)
             if (hit) {
               const skipTo = Math.min(hit[1], clipEnd)
-              // When the cut range reaches or passes clipEnd there is no content
-              // left to record. Finish immediately instead of seeking: seeking a
-              // video element to video.duration fires the 'ended' event in all
-              // browsers, which races with the 'seeked' event. The race can cause
-              // finishExport to be invoked while isSeeking is still true, leaving
-              // the recorder in an indeterminate state and recording frozen frames
-              // from the skipped region into the output.
-              if (skipTo >= clipEnd) {
+              // When the cut range reaches or passes clipEnd -- or leaves less
+              // than one frame of content before it -- there is nothing
+              // meaningful left to record. Finish immediately instead of seeking.
+              //
+              // Why the tolerance? FFmpeg timestamps and browser video.duration
+              // are derived from different timebases. For example, FFmpeg may
+              // report silence_end=67.9893 while video.duration=67.989333 (the
+              // same "end of file" expressed in different precisions). The raw
+              // equality check (skipTo >= clipEnd) misses cases like this one
+              // where the two values are < 1 ms apart. A 50 ms threshold -- well
+              // under one frame at any frame rate -- covers the precision gap
+              // without accidentally skipping real content (the silence detector
+              // minimum duration is 1 s, and manual cuts are user-placed).
+              //
+              // Avoiding the seek also eliminates the race between the 'ended'
+              // and 'seeked' events that occurs when seeking a video element to
+              // or very near video.duration: whichever fires first determines
+              // whether isSeeking is still true when finishExport runs, which
+              // can leave the recorder in an inconsistent state.
+              if (clipEnd - skipTo < 0.05) {
                 console.log('[CalmClip] canvasExport: skip range [' +
                   hit[0].toFixed(3) + ', ' + hit[1].toFixed(3) +
-                  '] reaches clip end -- finishing without seek')
+                  '] reaches clip end (remaining=' + (clipEnd - skipTo).toFixed(4) +
+                  's) -- finishing without seek')
                 if (audioBundle) audioBundle.audioEl.pause()
                 finishExport()
                 return
