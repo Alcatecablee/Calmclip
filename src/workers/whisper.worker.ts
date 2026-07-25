@@ -3,6 +3,14 @@ import { pipeline, env } from '@xenova/transformers'
 env.allowLocalModels = false
 env.useBrowserCache  = true
 
+// Suppress noisy internal logs from @xenova/transformers that are not
+// actionable and drown out real debug output.
+const _origLog = console.log.bind(console)
+console.log = (...args: unknown[]) => {
+  if (typeof args[0] === 'string' && args[0].includes('Unable to determine content-length')) return
+  _origLog(...args)
+}
+
 type ProgressInfo = { status: string; name?: string; file?: string; progress?: number; loaded?: number; total?: number }
 
 // `any` is required here: @xenova/transformers does not ship TypeScript types
