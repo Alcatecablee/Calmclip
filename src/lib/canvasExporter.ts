@@ -713,6 +713,12 @@ export async function exportVideoWithCaptions({
     // element never loads (e.g. partially-corrupt first segment, browser refusal
     // to buffer a second element concurrently, network interruption mid-session).
     let loadedDataTimer: ReturnType<typeof setTimeout> | null = null
+    // Set in onloadeddata once clipStart, clipEnd and skipRanges are all known.
+    // Used by recorder.onstop to write the correct Duration element into the WebM.
+    // effectiveDuration subtracts every silence/manual-cut range that falls inside
+    // the clip, so the Duration in the container matches what the viewer actually
+    // sees rather than the raw clip length.
+    let exportDurationSec = 0
 
     function cleanup(): void {
       if (stopTimer !== null) {
@@ -752,9 +758,14 @@ export async function exportVideoWithCaptions({
         return
       }
       onPhase?.(stripMetadata ? 'Removing metadata...' : 'Finalizing video...')
-      const finalized = stripMetadata
-        ? stripWebmMetadata(recorded)
-        : Promise.resolve(recorded)
+      // Always call stripWebmMetadata regardless of the stripMetadata flag.
+      // The third parameter controls whether identifying fields (MuxingApp,
+      // WritingApp, etc.) are cleared; the Duration element is always written
+      // so that players can display the correct total length. Without this,
+      // players that cannot determine duration from the container (e.g. VLC
+      // playing a streaming WebM with unknown Segment size) show 0:00 remaining
+      // for the entire playback.
+      const finalized = stripWebmMetadata(recorded, exportDurationSec, stripMetadata)
       finalized.then(blob => {
         if (blob.size === 0) {
           throw new Error('The finalized export is empty. The video cannot be downloaded safely.')
@@ -893,9 +904,13 @@ export async function exportVideoWithCaptions({
       const clipStart      = Math.max(0, trimStart)
       const clipEnd        = trimEnd !== null ? Math.min(trimEnd, totalDuration) : totalDuration
       const clipDuration   = Math.max(0.1, clipEnd - clipStart)
+      // Compute the true output duration now that clipStart, clipEnd and skipRanges
+      // are all known. This value is written into the WebM Duration element by
+      // recorder.onstop so that players can display the correct total length.
+      exportDurationSec = effectiveDuration(clipStart, clipEnd, skipRanges)
       console.log('[CalmClip] canvasExport: video loaded,',
         `duration=${totalDuration.toFixed(3)}s clip=[${clipStart.toFixed(3)}, ${clipEnd.toFixed(3)}]`,
-        `clipDuration=${clipDuration.toFixed(3)}s`)
+        `clipDuration=${clipDuration.toFixed(3)}s effectiveDuration=${exportDurationSec.toFixed(3)}s`)
 
       let finished  = false
       let isSeeking = false
@@ -953,6 +968,21 @@ export async function exportVideoWithCaptions({
             const hit = skipRanges.find(([s, e]) => currentTime >= s && currentTime < e)
             if (hit) {
               const skipTo = Math.min(hit[1], clipEnd)
+              // When the cut range reaches or passes clipEnd there is no content
+              // left to record. Finish immediately instead of seeking: seeking a
+              // video element to video.duration fires the 'ended' event in all
+              // browsers, which races with the 'seeked' event. The race can cause
+              // finishExport to be invoked while isSeeking is still true, leaving
+              // the recorder in an indeterminate state and recording frozen frames
+              // from the skipped region into the output.
+              if (skipTo >= clipEnd) {
+                console.log('[CalmClip] canvasExport: skip range [' +
+                  hit[0].toFixed(3) + ', ' + hit[1].toFixed(3) +
+                  '] reaches clip end -- finishing without seek')
+                if (audioBundle) audioBundle.audioEl.pause()
+                finishExport()
+                return
+              }
               console.log('[CalmClip] canvasExport: skip range hit [' +
                 hit[0].toFixed(3) + ', ' + hit[1].toFixed(3) + '] -> seekTo=' + skipTo.toFixed(3))
               isSeeking = true
