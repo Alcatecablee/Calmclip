@@ -378,6 +378,10 @@ export function drawCaptions(
   animationProgress = 0,
 ): void {
   if (!activeCaption || !activeCaption.group) return
+  // An empty words array would produce a layout loop over zero lines and write
+  // nothing to the canvas, but the subsequent ctx.save/restore pairs and font
+  // measurement calls are unnecessary. Exit early to keep the render path clean.
+  if (activeCaption.group.words.length === 0) return
 
   const { group, activeWordIndex } = activeCaption
   const texts = style.textTransform === 'uppercase'

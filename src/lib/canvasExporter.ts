@@ -598,6 +598,23 @@ export async function exportVideoWithCaptions({
     `hasAudio=${hasAudio} stripMetadata=${stripMetadata}`,
     `skipRanges=${skipRanges.length} denoise=${denoiseAudio} loudness=${loudnessTarget}`)
 
+  // Log caption burn-in summary so it is immediately visible in the console
+  // whether the export is carrying captions at all. Without this, "no captions
+  // in my export" is indistinguishable from "captions were never passed to the
+  // exporter" vs "captions were passed but getActiveCaption never matched".
+  if (captionGroups.length === 0) {
+    console.log('[CalmClip] canvasExport: captions=none (no groups passed -- video will export without burned-in captions)')
+  } else {
+    const totalWords = captionGroups.reduce((n, g) => n + g.words.length, 0)
+    const firstT     = captionGroups[0].startTime
+    const lastT      = captionGroups[captionGroups.length - 1].endTime
+    console.log(
+      `[CalmClip] canvasExport: captions=${captionGroups.length} groups`,
+      `${totalWords} words`,
+      `span=[${firstT.toFixed(3)}s, ${lastT.toFixed(3)}s]`,
+    )
+  }
+
   // Build the audio processing chain before the Promise so AudioWorklet.addModule()
   // can be awaited. Audio setup errors must remain visible to the user.
   let audioBundle: AudioBundle | null = null
