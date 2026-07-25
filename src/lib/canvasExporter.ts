@@ -20,42 +20,44 @@ import type { SilenceSegment }  from './silenceCutter'
 import type { CropMode }        from './ffmpeg'
 import { LOUDNESS_PRESETS, type LoudnessTarget } from './loudness'
 
-// ─── JavaScript-based WebM metadata stripper ─────────────────────────────────
+// ─── JavaScript-based WebM finalizer ────────────────────────────────────────
 //
-// Strips identifying metadata from a MediaRecorder WebM blob by editing the
-// EBML container directly, without running FFmpeg. This avoids the FFmpeg
-// remux step that is unreliable for streaming WebM from Chrome's MediaRecorder:
+// MediaRecorder WebM output is often playable but has no SegmentInfo Duration.
+// Some players, including VLC, then display a total duration of 00:00. This
+// finalizer repairs the EBML container directly, without FFmpeg remuxing. It
+// also clears the identifying fields that can be emitted by MediaRecorder.
 //
-//   - The multi-threaded WASM core fires Aborted() after every exec, marking
-//     the instance dead and forcing a reload on the next export.
-//   - The single-threaded core stops copying video frames when audio and video
-//     timestamps diverge significantly. This is a known artifact: the Web Audio
-//     API MediaStream timestamps are based on AudioContext.currentTime, which
-//     may be non-zero if the context was alive while FFmpeg WASM was loading.
-//     The muxer interleaver treats audio-ahead-of-video as a sync error and
-//     abandons video after only a few seconds, producing a file where only
-//     audio plays.
-//
-// A MediaRecorder WebM from Chrome contains no camera metadata (no GPS, no
-// device serial, no EXIF). The only identifying fields are MuxingApp and
-// WritingApp (both set to "Chrome") and DateUTC (the recording timestamp).
-// Zeroing those three fields satisfies the privacy invariant without touching
-// any frame data or the container structure.
+// FFmpeg remuxing is intentionally not used here. The multi-threaded WASM core
+// can abort after exec, while the single-threaded core can truncate canvas
+// output when Web Audio and video timestamps do not start at the same origin.
 
-// EBML element IDs to zero out within SegmentInfo.
-const WEBM_META_IDS = new Set([
-  0x4D80,  // MuxingApp  (UTF-8)
-  0x5741,  // WritingApp (UTF-8)
-  0x7BA9,  // Title      (UTF-8)
-  0x4461,  // DateUTC    (signed int64)
-])
-const EBML_ID_HEADER   = 0x1A45DFA3
-const EBML_ID_SEGMENT  = 0x18538067
-const EBML_ID_SEG_INFO = 0x1549A966
-const EBML_ID_TRACKS   = 0x1654AE6B
+const WEBM_META_IDS = new Set([0x4D80, 0x5741, 0x7BA9, 0x4461])
+const EBML_ID_HEADER    = 0x1A45DFA3
+const EBML_ID_SEGMENT   = 0x18538067
+const EBML_ID_SEG_INFO  = 0x1549A966
+const EBML_ID_SEEK_HEAD = 0x114D9B74
+const EBML_ID_TRACKS    = 0x1654AE6B
+const EBML_ID_DURATION  = 0x4489
+const EBML_ID_TIME_SCALE = 0x2AD7B1
+const EBML_ID_SEEK      = 0x4DBB
+const EBML_ID_SEEK_ID   = 0x53AB
+const EBML_ID_SEEK_POS  = 0x53AC
+const UNKNOWN_SIZE = -1
 
-// Reads an EBML element ID (1-4 bytes). The full byte sequence including the
-// width-marker bit is the ID value.
+interface EbmlSize {
+  size: number
+  n: number
+}
+
+interface EbmlElement {
+  id: number
+  start: number
+  dataStart: number
+  end: number
+  size: number
+  sizeN: number
+}
+
 function ebmlReadId(a: Uint8Array, p: number): { id: number; n: number } | null {
   if (p >= a.length) return null
   const b = a[p]
@@ -66,13 +68,11 @@ function ebmlReadId(a: Uint8Array, p: number): { id: number; n: number } | null 
   return { id, n }
 }
 
-// Reads an EBML element data size (1-8 bytes). The width-marker bit is stripped
-// from the value. Returns size=-1 for the unknown-size sentinel (used by
-// Segment in streaming/live WebM containers).
-function ebmlReadSize(a: Uint8Array, p: number): { size: number; n: number } | null {
+function ebmlReadSize(a: Uint8Array, p: number): EbmlSize | null {
   if (p >= a.length) return null
   const b = a[p]
-  let n: number, mask: number
+  let n: number
+  let mask: number
   if      (b >= 0x80) { n = 1; mask = 0x7F }
   else if (b >= 0x40) { n = 2; mask = 0x3F }
   else if (b >= 0x20) { n = 3; mask = 0x1F }
@@ -88,174 +88,326 @@ function ebmlReadSize(a: Uint8Array, p: number): { size: number; n: number } | n
     allSet = allSet && a[p + i] === 0xFF
     size = size * 256 + a[p + i]
   }
-  return { size: allSet ? -1 : size, n }
+  return { size: allSet ? UNKNOWN_SIZE : size, n }
 }
 
-const _EBML_ID_NAMES: Record<number, string> = {
-  0x4D80: 'MuxingApp', 0x5741: 'WritingApp', 0x7BA9: 'Title', 0x4461: 'DateUTC',
-}
-
-// Duration element (0x4489): 2-byte ID + 1-byte size VINT (value=8) + 8-byte float64 = 11 bytes.
-const DURATION_ELEM_BYTES = 11
-const EBML_ID_DURATION    = 0x4489  // float64 in SegmentInfo, units = TimestampScale (default 1ms)
-
-// Writes a Duration EBML element (11 bytes) at position pos in arr.
-// durationSec is converted to milliseconds (WebM default TimestampScale = 1,000,000 ns = 1 ms).
-function writeDurationElem(a: Uint8Array, pos: number, durationSec: number): void {
-  a[pos]   = 0x44          // Duration ID high byte
-  a[pos+1] = 0x89          // Duration ID low byte
-  a[pos+2] = 0x88          // size VINT: 0x80 | 8 = 8 bytes of data
-  const dv = new DataView(a.buffer, a.byteOffset + pos + 3, 8)
-  dv.setFloat64(0, durationSec * 1000, false)  // big-endian float64, value in ms
-}
-
-// Writes a Void EBML element (0xEC) filling exactly `totalBytes` bytes at pos.
-// Minimum size is 2 (1-byte ID + 1-byte zero-size VINT with no data).
-function writeVoidElem(a: Uint8Array, pos: number, totalBytes: number): void {
-  if (totalBytes < 2) return
-  a[pos] = 0xEC  // Void element ID
-  const dataSize = totalBytes - 2  // remaining after ID byte + 1-byte size VINT
-  if (dataSize <= 127) {
-    a[pos+1] = 0x80 | dataSize    // 1-byte VINT
-    a.fill(0, pos + 2, pos + totalBytes)
-  } else {
-    // 2-byte size VINT for larger padding (rare in SegmentInfo but handle it)
-    const actualData = totalBytes - 3
-    a[pos+1] = 0x40 | (actualData >> 8)
-    a[pos+2] = actualData & 0xFF
-    a.fill(0, pos + 3, pos + totalBytes)
+function ebmlElement(a: Uint8Array, start: number, limit: number): EbmlElement | null {
+  const id = ebmlReadId(a, start)
+  if (!id) return null
+  const size = ebmlReadSize(a, start + id.n)
+  if (!size) return null
+  const dataStart = start + id.n + size.n
+  if (size.size === UNKNOWN_SIZE) return {
+    id: readEbmlIdValue(a, start, id.n),
+    start,
+    dataStart,
+    end: limit,
+    size: UNKNOWN_SIZE,
+    sizeN: size.n,
   }
+  const end = dataStart + size.size
+  if (end > limit) return null
+  return { id: readEbmlIdValue(a, start, id.n), start, dataStart, end, size: size.size, sizeN: size.n }
 }
 
-// Attempts to write Duration into the first contiguous block of cleared ranges
-// that is large enough (>= DURATION_ELEM_BYTES). Remaining space gets a Void element.
-// Returns true if Duration was written.
-function tryInjectDuration(a: Uint8Array, ranges: [number, number][], durationSec: number): boolean {
-  if (ranges.length === 0 || durationSec <= 0) return false
-  ranges.sort((x, y) => x[0] - y[0])
-
-  let blockStart = ranges[0][0]
-  let blockEnd   = ranges[0][1]
-  for (let i = 1; i < ranges.length; i++) {
-    if (ranges[i][0] === blockEnd) {
-      blockEnd = ranges[i][1]  // adjacent range, extend the block
-    } else {
-      // Gap in ranges: try this block before moving on
-      if (blockEnd - blockStart >= DURATION_ELEM_BYTES) break
-      blockStart = ranges[i][0]
-      blockEnd   = ranges[i][1]
-    }
-  }
-  const blockSize = blockEnd - blockStart
-  if (blockSize < DURATION_ELEM_BYTES) return false
-
-  writeDurationElem(a, blockStart, durationSec)
-  const remaining = blockSize - DURATION_ELEM_BYTES
-  if (remaining >= 2) writeVoidElem(a, blockStart + DURATION_ELEM_BYTES, remaining)
-  return true
+function readEbmlIdValue(a: Uint8Array, start: number, width: number): number {
+  let id = 0
+  for (let i = 0; i < width; i++) id = id * 256 + a[start + i]
+  return id
 }
 
-// Modifies the Uint8Array in place: zeros private metadata fields in SegmentInfo
-// and injects a Duration element using the freed space so players show correct length.
-// durationSec is the clip duration in seconds (from the export pipeline).
-// No-ops silently if the buffer is not valid WebM.
-function eraseWebmTagFields(a: Uint8Array, durationSec?: number): void {
-  // Skip EBML header
-  const h = ebmlReadId(a, 0)
-  if (!h || h.id !== EBML_ID_HEADER) {
-    console.warn('[CalmClip] stripWebmMetadata: EBML header not found, skipping erase')
-    return
+function readEbmlUnsigned(a: Uint8Array, start: number, size: number): number {
+  if (size < 1 || size > 8 || start + size > a.length) {
+    throw new Error('The WebM timestamp scale is invalid.')
   }
-  let p = h.n
-  const hs = ebmlReadSize(a, p)
-  if (!hs || hs.size < 0) return
-  p += hs.n + hs.size
-
-  // Enter Segment (size may be -1 for streaming/live containers)
-  const seg = ebmlReadId(a, p)
-  if (!seg || seg.id !== EBML_ID_SEGMENT) {
-    console.warn('[CalmClip] stripWebmMetadata: Segment element not found, skipping erase')
-    return
+  let value = 0
+  for (let i = 0; i < size; i++) value = value * 256 + a[start + i]
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error('The WebM timestamp scale is outside the supported range.')
   }
-  p += seg.n
-  const ss = ebmlReadSize(a, p)
-  if (!ss) return
-  p += ss.n
-  console.log('[CalmClip] stripWebmMetadata: Segment found, size=' +
-    (ss.size < 0 ? 'unknown (streaming WebM)' : ss.size + 'B'))
-
-  // Scan Segment children; SegmentInfo always precedes Tracks and Clusters
-  const limit = Math.min(a.length, p + 131_072)
-  while (p < limit) {
-    const el = ebmlReadId(a, p)
-    if (!el) break
-    p += el.n
-    const esz = ebmlReadSize(a, p)
-    if (!esz) break
-    p += esz.n
-
-    if (el.id === EBML_ID_SEG_INFO && esz.size > 0) {
-      const end = p + esz.size
-      let ip = p
-      const cleared: string[] = []
-      const clearedRanges: [number, number][] = []
-      let hasDuration = false
-
-      while (ip < end) {
-        const elemStart = ip   // full element starts here (ID bytes)
-        const ie = ebmlReadId(a, ip)
-        if (!ie) break
-        ip += ie.n
-        const isz = ebmlReadSize(a, ip)
-        if (!isz || isz.size < 0) break
-        ip += isz.n
-
-        if (ie.id === EBML_ID_DURATION) hasDuration = true
-
-        if (WEBM_META_IDS.has(ie.id) && isz.size > 0) {
-          const name = _EBML_ID_NAMES[ie.id] ?? `0x${ie.id.toString(16)}`
-          cleared.push(`${name}(${isz.size}B)`)
-          clearedRanges.push([elemStart, ip + isz.size])   // track full elem range
-          a.fill(0, ip, ip + isz.size)
-        }
-        ip += isz.size
-      }
-
-      // Inject Duration into the freed space so VLC/players show correct length.
-      // We only inject if: (a) the caller provided durationSec, (b) no Duration
-      // element already existed, and (c) freed ranges form a contiguous block >= 11B.
-      let injected = false
-      if (!hasDuration && durationSec !== undefined && durationSec > 0) {
-        injected = tryInjectDuration(a, clearedRanges, durationSec)
-      }
-
-      console.log('[CalmClip] stripWebmMetadata: cleared fields:', cleared.join(', ') || '(none found)',
-        injected ? `| injected Duration=${durationSec?.toFixed(3)}s` : hasDuration ? '| Duration already present' : '| Duration not injected')
-      return
-    }
-
-    if (el.id === EBML_ID_TRACKS) {
-      console.warn('[CalmClip] stripWebmMetadata: reached Tracks before SegmentInfo')
-      return
-    }
-    if (esz.size < 0) break               // Unknown-size non-Segment element
-    p += esz.size
-  }
-  console.warn('[CalmClip] stripWebmMetadata: SegmentInfo not found within 128 KB scan limit')
+  return value
 }
 
-// Strips identifying metadata from a WebM blob and injects Duration so players
-// can display total length and seek correctly. Pure JS, no WASM, no re-mux.
-async function stripWebmMetadata(blob: Blob, durationSec?: number): Promise<Blob> {
-  console.log('[CalmClip] stripWebmMetadata: start, blob size=' + blob.size + 'B (' +
-    (blob.size / 1_048_576).toFixed(2) + ' MB)' +
-    (durationSec !== undefined ? ` durationSec=${durationSec.toFixed(3)}` : ''))
-  const buf = await blob.arrayBuffer()
-  const arr = new Uint8Array(buf)
-  eraseWebmTagFields(arr, durationSec)
-  const out = new Blob([arr], { type: blob.type })
-  console.log('[CalmClip] stripWebmMetadata: done, output size=' + out.size + 'B')
+function ebmlSizeWidth(size: number, preferredWidth?: number): number {
+  if (!Number.isSafeInteger(size) || size < 0) {
+    throw new Error('The finalized WebM container is too large to encode safely.')
+  }
+  const fits = (width: number) => {
+    const max = 2 ** (7 * width) - 2
+    return size <= max
+  }
+  if (preferredWidth !== undefined && preferredWidth >= 1 && preferredWidth <= 8 && fits(preferredWidth)) {
+    return preferredWidth
+  }
+  for (let width = 1; width <= 8; width++) {
+    if (fits(width)) return width
+  }
+  throw new Error('The finalized WebM container is too large to encode safely.')
+}
+
+function ebmlEncodeSize(size: number, preferredWidth?: number): Uint8Array {
+  const width = ebmlSizeWidth(size, preferredWidth)
+  const out = new Uint8Array(width)
+  let remaining = size
+  for (let i = width - 1; i >= 0; i--) {
+    out[i] = remaining & 0xFF
+    remaining = Math.floor(remaining / 256)
+  }
+  out[0] |= 1 << (8 - width)
   return out
+}
+
+function ebmlEncodeElement(id: number, payload: Uint8Array, preferredSizeWidth?: number): Uint8Array {
+  const idBytes = id <= 0xFF
+    ? [id]
+    : id <= 0xFFFF
+      ? [id >> 8, id & 0xFF]
+      : id <= 0xFFFFFF
+        ? [id >> 16, (id >> 8) & 0xFF, id & 0xFF]
+        : [(id >>> 24) & 0xFF, (id >>> 16) & 0xFF, (id >>> 8) & 0xFF, id & 0xFF]
+  const sizeBytes = ebmlEncodeSize(payload.length, preferredSizeWidth)
+  const out = new Uint8Array(idBytes.length + sizeBytes.length + payload.length)
+  out.set(idBytes, 0)
+  out.set(sizeBytes, idBytes.length)
+  out.set(payload, idBytes.length + sizeBytes.length)
+  return out
+}
+
+function ebmlConcat(parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.length, 0)
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const part of parts) {
+    out.set(part, offset)
+    offset += part.length
+  }
+  return out
+}
+
+function writeFloat(a: Uint8Array, start: number, size: number, value: number): void {
+  const view = new DataView(a.buffer, a.byteOffset + start, size)
+  if (size === 4) view.setFloat32(0, value, false)
+  else if (size === 8) view.setFloat64(0, value, false)
+  else throw new Error('The WebM Duration element has an unsupported size.')
+}
+
+function writeUnsigned(a: Uint8Array, start: number, size: number, value: number): void {
+  if (!Number.isSafeInteger(value) || value < 0 || value >= 2 ** (8 * size)) {
+    throw new Error('The WebM seek index is outside the supported range.')
+  }
+  let remaining = value
+  for (let i = start + size - 1; i >= start; i--) {
+    a[i] = remaining & 0xFF
+    remaining = Math.floor(remaining / 256)
+  }
+}
+
+function durationPayload(durationSec: number, timestampScale: number, bytes: 4 | 8): Uint8Array {
+  const ticks = durationSec * 1_000_000_000 / timestampScale
+  if (!Number.isFinite(ticks) || ticks <= 0) {
+    throw new Error('The export duration cannot be represented in the WebM container.')
+  }
+  const payload = new Uint8Array(bytes)
+  writeFloat(payload, 0, bytes, ticks)
+  return payload
+}
+
+function createDurationElement(durationSec: number, timestampScale: number, bytes: 4 | 8): Uint8Array {
+  return ebmlEncodeElement(EBML_ID_DURATION, durationPayload(durationSec, timestampScale, bytes), 1)
+}
+
+function updateSeekPositions(
+  a: Uint8Array,
+  seekHead: EbmlElement,
+  oldInfoEndRelative: number,
+  delta: number,
+): void {
+  let p = seekHead.dataStart
+  while (p < seekHead.end) {
+    const seek = ebmlElement(a, p, seekHead.end)
+    if (!seek || seek.size === UNKNOWN_SIZE) throw new Error('The WebM seek index is invalid.')
+    if (seek.id === EBML_ID_SEEK) {
+      let seekId: Uint8Array | null = null
+      let seekPosition: EbmlElement | null = null
+      let child = seek.dataStart
+      while (child < seek.end) {
+        const entry = ebmlElement(a, child, seek.end)
+        if (!entry || entry.size === UNKNOWN_SIZE) throw new Error('The WebM seek entry is invalid.')
+        if (entry.id === EBML_ID_SEEK_ID) seekId = a.slice(entry.dataStart, entry.end)
+        if (entry.id === EBML_ID_SEEK_POS) seekPosition = entry
+        child = entry.end
+      }
+      if (seekId && seekPosition && readEbmlIdValue(seekId, 0, seekId.length) !== EBML_ID_SEG_INFO) {
+        const position = readEbmlUnsigned(a, seekPosition.dataStart, seekPosition.size)
+        if (position >= oldInfoEndRelative) {
+          writeUnsigned(a, seekPosition.dataStart, seekPosition.size, position + delta)
+        }
+      }
+    }
+    p = seek.end
+  }
+}
+
+function effectiveDuration(
+  clipStart: number,
+  clipEnd: number,
+  skipRanges: [number, number][],
+): number {
+  const ranges = skipRanges
+    .map(([start, end]) => [
+      Math.max(clipStart, Math.min(clipEnd, start)),
+      Math.max(clipStart, Math.min(clipEnd, end)),
+    ] as [number, number])
+    .filter(([start, end]) => end > start)
+    .sort((a, b) => a[0] - b[0])
+
+  let skipped = 0
+  let current: [number, number] | null = null
+  for (const range of ranges) {
+    if (!current || range[0] > current[1]) {
+      if (current) skipped += current[1] - current[0]
+      current = range
+    } else {
+      current[1] = Math.max(current[1], range[1])
+    }
+  }
+  if (current) skipped += current[1] - current[0]
+  return Math.max(0, clipEnd - clipStart - skipped)
+}
+
+function rewriteWebm(
+  source: Uint8Array,
+  durationSec: number,
+  sanitizeMetadata: boolean,
+): Uint8Array {
+  if (source.length < 4) throw new Error('The exported WebM file is incomplete.')
+  const header = ebmlElement(source, 0, source.length)
+  if (!header || header.id !== EBML_ID_HEADER || header.size === UNKNOWN_SIZE) {
+    throw new Error('The exported WebM file has an invalid EBML header.')
+  }
+  const segment = ebmlElement(source, header.end, source.length)
+  if (!segment || segment.id !== EBML_ID_SEGMENT) {
+    throw new Error('The exported WebM file has no valid Segment element.')
+  }
+  const segmentContentEnd = segment.size === UNKNOWN_SIZE ? source.length : segment.end
+  let info: EbmlElement | null = null
+  let seekHead: EbmlElement | null = null
+  let p = segment.dataStart
+  while (p < segmentContentEnd) {
+    const element = ebmlElement(source, p, segmentContentEnd)
+    if (!element || element.size === UNKNOWN_SIZE) {
+      throw new Error('The exported WebM container has an invalid top-level element.')
+    }
+    if (element.id === EBML_ID_SEG_INFO) {
+      info = element
+      break
+    }
+    if (element.id === EBML_ID_SEEK_HEAD) seekHead = element
+    if (element.id === EBML_ID_TRACKS) break
+    p = element.end
+  }
+  if (!info) throw new Error('The exported WebM file has no SegmentInfo element.')
+
+  let timestampScale = 1_000_000
+  let durationElement: EbmlElement | null = null
+  const metadataElements: EbmlElement[] = []
+  p = info.dataStart
+  while (p < info.end) {
+    const element = ebmlElement(source, p, info.end)
+    if (!element || element.size === UNKNOWN_SIZE) {
+      throw new Error('The exported WebM SegmentInfo is invalid.')
+    }
+    if (element.id === EBML_ID_TIME_SCALE) {
+      timestampScale = readEbmlUnsigned(source, element.dataStart, element.size)
+    } else if (element.id === EBML_ID_DURATION) {
+      durationElement = element
+    } else if (WEBM_META_IDS.has(element.id)) {
+      metadataElements.push(element)
+    }
+    p = element.end
+  }
+
+  if (!Number.isFinite(durationSec) || durationSec <= 0) {
+    throw new Error('The export duration is not available, so the WebM file cannot be finalized safely.')
+  }
+
+  const durationTicks = durationSec * 1_000_000_000 / timestampScale
+  if (!Number.isFinite(durationTicks) || durationTicks <= 0) {
+    throw new Error('The export duration is outside the supported WebM range.')
+  }
+
+  if (sanitizeMetadata) {
+    for (const element of metadataElements) {
+      source.fill(0, element.dataStart, element.end)
+    }
+  }
+
+  if (durationElement && (durationElement.size === 4 || durationElement.size === 8)) {
+    writeFloat(source, durationElement.dataStart, durationElement.size, durationTicks)
+    console.log('[CalmClip] stripWebmMetadata: updated existing Duration=' + durationSec.toFixed(3) + 's')
+    return source
+  }
+  if (durationElement) {
+    throw new Error('The existing WebM Duration element has an unsupported size.')
+  }
+
+  const duration = createDurationElement(durationSec, timestampScale, 8)
+  const infoPayload = source.slice(info.dataStart, info.end)
+  const newInfoPayload = ebmlConcat([infoPayload, duration])
+  const newInfo = ebmlEncodeElement(EBML_ID_SEG_INFO, newInfoPayload, info.sizeN)
+  const delta = newInfo.length - (info.end - info.start)
+  const segmentSize = segment.size === UNKNOWN_SIZE
+    ? null
+    : ebmlEncodeSize(segment.size + delta, segment.sizeN)
+  const newSegmentHeader = segment.size === UNKNOWN_SIZE
+    ? source.slice(segment.start, segment.dataStart)
+    : ebmlConcat([
+        source.slice(segment.start, segment.start + 4),
+        segmentSize!,
+      ])
+  const output = ebmlConcat([
+    source.slice(0, segment.start),
+    newSegmentHeader,
+    source.slice(segment.dataStart, info.start),
+    newInfo,
+    source.slice(info.end),
+  ])
+
+  const segmentHeaderDelta = newSegmentHeader.length - (segment.dataStart - segment.start)
+  if (seekHead && delta !== 0) {
+    const seekHeadStart = seekHead.start + segmentHeaderDelta +
+      (seekHead.start >= info.end ? delta : 0)
+    const newSeekHead = ebmlElement(output, seekHeadStart, output.length)
+    if (!newSeekHead) throw new Error('The finalized WebM seek index could not be located.')
+    updateSeekPositions(
+      output,
+      newSeekHead,
+      info.end - segment.dataStart,
+      delta,
+    )
+  }
+
+  console.log('[CalmClip] stripWebmMetadata: appended Duration=' + durationSec.toFixed(3) + 's')
+  return output
+}
+
+// Finalizes a WebM blob in the browser. When sanitizeMetadata is false, the
+// duration is still repaired while private metadata is left unchanged.
+export async function stripWebmMetadata(
+  blob: Blob,
+  durationSec: number,
+  sanitizeMetadata = true,
+): Promise<Blob> {
+  console.log('[CalmClip] stripWebmMetadata: start, blob size=' + blob.size + 'B (' +
+    (blob.size / 1_048_576).toFixed(2) + ' MB) durationSec=' + durationSec.toFixed(3))
+  const source = new Uint8Array(await blob.arrayBuffer())
+  const output = rewriteWebm(source, durationSec, sanitizeMetadata)
+  if (output.byteLength === 0) {
+    throw new Error('WebM finalization produced an empty video. The export cannot be downloaded safely.')
+  }
+  const finalized = new Blob([output.buffer as ArrayBuffer], { type: blob.type || 'video/webm' })
+  console.log('[CalmClip] stripWebmMetadata: done, output size=' + finalized.size + 'B')
+  return finalized
 }
 
 interface ExportOptions {
