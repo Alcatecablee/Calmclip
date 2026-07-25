@@ -1003,6 +1003,13 @@ export async function exportVideoWithCaptions({
               // skipped region is routed through the Web Audio graph and
               // recorded into the MediaRecorder output during the seek.
               if (audioBundle) audioBundle.audioEl.pause()
+              // Pause the MediaRecorder so canvas.captureStream() does not
+              // record frozen frames while the browser seeks. Without this,
+              // every frame rendered during the seek (which can take several
+              // real-time seconds for large jumps on a blob URL) is recorded
+              // as a duplicate of the last frame, producing a video freeze in
+              // the output for the full seek duration.
+              if (recorder.state === 'recording') recorder.pause()
               video.onseeked = () => {
                 video.onseeked = null
                 // Re-sync audio to the new video position and resume.
@@ -1011,6 +1018,9 @@ export async function exportVideoWithCaptions({
                   audioBundle.audioEl.play().catch(() => {})
                 }
                 isSeeking = false
+                // Resume capturing only after the seek is complete so the
+                // recorder picks up clean frames from the new position.
+                if (recorder.state === 'paused') recorder.resume()
                 requestAnimationFrame(renderFrame)
               }
               video.currentTime = skipTo
