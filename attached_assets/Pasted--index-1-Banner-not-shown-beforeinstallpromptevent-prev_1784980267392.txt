@@ -1,0 +1,59 @@
+(index):1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+index-C_37YOcw.js:9 [CalmClip] execOrThrow: calling ff.exec with args: -ss 0 -t 67.989333 -i sil_input.mp4 -vn -af silencedetect=noise=-50dB:d=1 -f null -
+index-C_37YOcw.js:9 [CalmClip FFmpeg] ffmpeg version 5.1.4 Copyright (c) 2000-2023 the FFmpeg developers
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   built with emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.40 (5c27e79dd0a9c4e27ef2326841698cdd4f6b5784)
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   configuration: --target-os=none --arch=x86_32 --enable-cross-compile --disable-asm --disable-stripping --disable-programs --disable-doc --disable-debug --disable-runtime-cpudetect --disable-autodetect --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc --extra-cflags='-I/opt/include -O3 -msimd128 -sUSE_PTHREADS -pthread' --extra-cxxflags='-I/opt/include -O3 -msimd128 -sUSE_PTHREADS -pthread' --enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libopus --enable-zlib --enable-libwebp --enable-libfreetype --enable-libfribidi --enable-libass --enable-libzimg
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libavutil      57. 28.100 / 57. 28.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libavcodec     59. 37.100 / 59. 37.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libavformat    59. 27.100 / 59. 27.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libavdevice    59.  7.100 / 59.  7.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libavfilter     8. 44.100 /  8. 44.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libswscale      6.  7.100 /  6.  7.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libswresample   4.  7.100 /  4.  7.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   libpostproc    56.  6.100 / 56.  6.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg] Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'sil_input.mp4':
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   Metadata:
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     major_brand     : mp42
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     minor_version   : 0
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     compatible_brands: mp42isom
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   Duration: 00:01:07.99, start: 0.000000, bitrate: 1713 kb/s
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 478x850, 1457 kb/s, 30 fps, 30 tbr, 90k tbn (default)
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     Metadata:
+index-C_37YOcw.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 253 kb/s (default)
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     Metadata:
+index-C_37YOcw.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-C_37YOcw.js:9 [CalmClip FFmpeg] Stream mapping:
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+index-C_37YOcw.js:9 [CalmClip FFmpeg] Output #0, null, to 'pipe:':
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   Metadata:
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     major_brand     : mp42
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     minor_version   : 0
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     compatible_brands: mp42isom
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     encoder         : Lavf59.27.100
+index-C_37YOcw.js:9 [CalmClip FFmpeg]   Stream #0:0(und): Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s (default)
+index-C_37YOcw.js:9 [CalmClip FFmpeg]     Metadata:
+index-C_37YOcw.js:9 [CalmClip FFmpeg]       vendor_id       : [0][0][0][0]
+index-C_37YOcw.js:9 [CalmClip FFmpeg]       encoder         : Lavc59.37.100 pcm_s16le
+index-C_37YOcw.js:9 [CalmClip FFmpeg] size=N/A time=00:00:00.02 bitrate=N/A speed= 362x    
+index-C_37YOcw.js:9 [CalmClip FFmpeg] size=N/A time=00:01:01.20 bitrate=N/A speed= 122x    
+index-C_37YOcw.js:9 [CalmClip FFmpeg] [silencedetect @ 0xee17b0] silence_start: 64.2305
+index-C_37YOcw.js:9 [CalmClip FFmpeg] size=N/A time=00:01:07.98 bitrate=N/A speed= 125x    
+index-C_37YOcw.js:9 [CalmClip FFmpeg] video:0kB audio:12748kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+index-C_37YOcw.js:9 [CalmClip FFmpeg] [silencedetect @ 0xee17b0] silence_end: 67.9893 | silence_duration: 3.75885
+index-C_37YOcw.js:9 [CalmClip FFmpeg] Aborted()
+index-C_37YOcw.js:9 [CalmClip] execOrThrow: ff.exec returned, exit code: 0
+index-C_37YOcw.js:9 [CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload
+index-C_37YOcw.js:12 [CalmClip] canvasExport: start trimStart=0.000s trimEnd=67.989 res=720x1280 hasAudio=true stripMetadata=true skipRanges=1 denoise=true loudness=youtube
+index-C_37YOcw.js:12 [CalmClip] canvasExport: audio chain ready, ctx.state=running
+index-C_37YOcw.js:12 [CalmClip] canvasExport: MediaRecorder mimeType=video/webm;codecs=vp9,opus canvas=720x1280 audioTracks=1
+index-C_37YOcw.js:12 [CalmClip] canvasExport: video loaded, duration=67.989s clip=[0.000, 67.989] clipDuration=67.989s
+index-C_37YOcw.js:12 [CalmClip] canvasExport: seeked to clipStart=0.000s, starting recorder (timeslice=100ms)
+index-C_37YOcw.js:12 [CalmClip] canvasExport: AudioContext resumed, state=running
+index-C_37YOcw.js:12 [CalmClip] canvasExport: finishExport called, stopping recorder
+index-C_37YOcw.js:12 [CalmClip] canvasExport: recorder stopped, chunks=89 recorded=6060063B (5.78 MB)
+index-C_37YOcw.js:12 [CalmClip] stripWebmMetadata: start, blob size=6060063B (5.78 MB)
+index-C_37YOcw.js:12 [CalmClip] stripWebmMetadata: Segment found, size=unknown (streaming WebM)
+index-C_37YOcw.js:12 [CalmClip] stripWebmMetadata: cleared fields: MuxingApp(6B), WritingApp(6B) | Duration not injected
+index-C_37YOcw.js:12 [CalmClip] stripWebmMetadata: done, output size=6060063B
+index-C_37YOcw.js:12 [CalmClip] canvasExport: resolving with final blob 6060063B
