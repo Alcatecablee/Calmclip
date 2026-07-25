@@ -34,16 +34,24 @@ export async function detectSilence(
     try {
       await ff.writeFile('sil_input.mp4', await fetchFile(file))
 
+      // Build FFmpeg args. Only add seek/duration flags when the trim range is
+      // meaningfully set. trimEnd uses 0 as its uninitialized sentinel in
+      // App.tsx state; passing -t 0 to FFmpeg produces unreliable results.
+      const hasTrimStart = trimStart > 0
+      const hasTrimEnd   = trimEnd > trimStart
+      const silArgs: string[] = []
+      if (hasTrimStart) silArgs.push('-ss', String(trimStart))
+      if (hasTrimEnd)   silArgs.push('-t',  String(trimEnd - trimStart))
+      silArgs.push(
+        '-i',  'sil_input.mp4',
+        '-vn',
+        '-af', `silencedetect=noise=${noiseDb}dB:d=${minDur}`,
+        '-f',  'null',
+        '-',
+      )
+
       try {
-        await runFfmpegWithWatchdog(ff, [
-          '-ss',  String(trimStart),
-          '-t',   String(trimEnd - trimStart),
-          '-i',   'sil_input.mp4',
-          '-vn',
-          '-af',  `silencedetect=noise=${noiseDb}dB:d=${minDur}`,
-          '-f',   'null',
-          '-',
-        ])
+        await runFfmpegWithWatchdog(ff, silArgs)
       } catch (err) {
         throw new Error(`Silence detection failed. The file may have no audio track or an unsupported codec. (${err instanceof Error ? err.message : String(err)})`)
       }

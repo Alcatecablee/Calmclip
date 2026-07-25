@@ -137,8 +137,14 @@ export default function TranscribeButton({ videoFile, videoDuration, trimStart =
 
     // The audio duration is the trimmed segment, not the full video.
     // This drives progress estimation and the distributeWords fallback.
+    //
+    // trimEnd uses 0 as its uninitialized sentinel in App.tsx state (it is set
+    // to v.duration after loadedmetadata fires). Treat trimEnd <= 0 as "not
+    // yet set" so we fall back to videoDuration rather than computing
+    // Math.max(1, 0 - 0) = 1 and producing a 1-second audioDuration for a
+    // full-length video.
     const resolvedTrimStart = trimStart ?? 0
-    const resolvedTrimEnd   = trimEnd ?? null
+    const resolvedTrimEnd   = (trimEnd != null && trimEnd > 0) ? trimEnd : null
     const audioDuration = resolvedTrimEnd !== null
       ? Math.max(1, resolvedTrimEnd - resolvedTrimStart)
       : (videoDuration || 60)
