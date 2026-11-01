@@ -12,7 +12,7 @@ export async function detectSilence(
   noiseDb:   number = -50,
   minDur:    number = 1.0,
 ): Promise<SilenceSegment[]> {
-  acquireFfmpegLock()
+  const lockLease = acquireFfmpegLock()
   try {
     const ff = await loadFfmpeg()
 
@@ -63,6 +63,6 @@ export async function detectSilence(
 
     return segments
   } finally {
-    releaseFfmpegLock()
+    releaseFfmpegLock(lockLease)
   }
 }
