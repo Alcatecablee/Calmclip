@@ -51,7 +51,7 @@ export async function extractAudioForWhisper(
 ): Promise<Float32Array> {
   const TARGET_SR = 16000
 
-  acquireFfmpegLock()
+  const lockLease = acquireFfmpegLock()
   try {
     const ff = await loadFfmpeg()
     const inputName = 'temp_whisper_input.mp4'
@@ -111,7 +111,7 @@ export async function extractAudioForWhisper(
       ff.deleteFile(outputName).catch(() => {})
     }
   } finally {
-    releaseFfmpegLock()
+    releaseFfmpegLock(lockLease)
   }
 }
 

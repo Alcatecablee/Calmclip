@@ -15,13 +15,92 @@ let _ff:             FFmpeg | null          = null
 let _loaded:         boolean                = false
 let _loadingPromise: Promise<FFmpeg> | null = null
 let _mtFailed        = false  // set true if MT core loading fails or times out; not reset
-// Set true when Aborted() appears in FFmpeg exec output. The MT pthreads runtime
-// fires abort() after the main thread exits, killing the worker. loadFfmpeg()
-// checks this flag and discards the dead instance before returning a new one.
+// Set true when an unrecoverable worker-level failure occurs (e.g. watchdog timeout
+// or genuine worker crash failing health check). loadFfmpeg() checks this flag and discards
+// the dead instance before returning a fresh one.
 let _workerAborted   = false
-// Guards against concurrent FFmpeg operations. The FFmpeg WASM singleton is not
-// re-entrant: two simultaneous ff.exec() calls deadlock the worker thread.
-let _ffWorkerBusy    = false
+// Monotonic generation counter incremented on instance reload or resetFfmpeg().
+// Allows in-flight operations to distinguish intentional resets from unprompted crashes.
+let _instanceGeneration = 0
+
+// Retained worker URL for the active multi-threaded FFmpeg instance.
+// Emscripten allocates pthread workers from this URL. Retained until the instance is terminated.
+let _activeWorkerBlobURL: string | null = null
+
+// Ownership lease for the FFmpeg task lock.
+// Using a unique symbol lease prevents stale finally blocks from releasing
+// a lock acquired by a newer operation after an intentional reset.
+export type FfmpegLockLease = symbol
+let _activeLockLease: FfmpegLockLease | null = null
+
+// Custom error class distinguishing watchdog timeouts from operational errors.
+export class WatchdogTimeoutError extends Error {
+  readonly isWatchdogTimeout = true
+  constructor(message: string) {
+    super(message)
+    this.name = 'WatchdogTimeoutError'
+  }
+}
+
+const HEALTH_CHECK_TIMEOUT_MS = 3_000
+
+function isWatchdogError(err: unknown): boolean {
+  if (err instanceof WatchdogTimeoutError) return true
+  if (err && typeof err === 'object' && ('isWatchdogTimeout' in err || (err as Error).name === 'WatchdogTimeoutError')) {
+    return true
+  }
+  return false
+}
+
+function isTerminationError(raw: unknown): boolean {
+  if (!raw) return false
+  if (raw instanceof Error && (raw.message.includes('called FFmpeg.terminate()') || raw.name === 'AbortError')) {
+    return true
+  }
+  if (typeof raw === 'string' && raw.includes('called FFmpeg.terminate()')) {
+    return true
+  }
+  return false
+}
+
+function normalizeError(raw: unknown, defaultMsg = 'FFmpeg threw an unexpected internal error.'): Error {
+  if (raw instanceof Error) return raw
+  if (typeof raw === 'string') return new Error(raw)
+  return new Error(defaultMsg)
+}
+
+// Perform a bounded health verification check on an existing FFmpeg instance.
+// Executes a benign -version check directly on the worker without recursing into watchdog.
+export async function verifyFfmpegHealth(ff: FFmpeg): Promise<boolean> {
+  if (!ff || !ff.loaded) {
+    return false
+  }
+
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const timeoutPromise = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), HEALTH_CHECK_TIMEOUT_MS)
+  })
+
+  const execPromise = (async () => {
+    try {
+      const ret = await ff.exec(['-version'])
+      return ret === 0
+    } catch {
+      return false
+    }
+  })()
+
+  try {
+    return await Promise.race([execPromise, timeoutPromise])
+  } catch {
+    return false
+  } finally {
+    if (timer !== null) {
+      clearTimeout(timer)
+      timer = null
+    }
+  }
+}
 
 // Minimum stale-activity timeout regardless of clip length.
 const EXEC_STALE_FLOOR_MS = 3 * 60 * 1000
@@ -37,38 +116,56 @@ function calcStaleMs(durationSec: number): number {
   return Math.min(20 * 60 * 1000, EXEC_STALE_FLOOR_MS + extraMinutes * 60 * 1000)
 }
 
-// @ffmpeg/ffmpeg v0.12 exec() returns the exit code: it does NOT throw.
-// This wrapper checks the code and throws a proper Error so callers can catch it.
-//
-// Two watchdogs race against ff.exec():
-//
-//   1. Full-stale watchdog (staleMs): fires when NO log or progress event occurs
-//      for the entire staleMs window. Catches a completely dead worker.
-//
-//   2. Progress-stale watchdog (PROGRESS_STALE_MS): fires when FFmpeg IS logging
-//      (healthy) but no valid 0-1 progress value has been emitted for
-//      PROGRESS_STALE_MS. This catches filters that loop forever without
-//      producing output frames (e.g. loudnorm in linear mode with an unknown
-//      output duration causing NaN progress throughout the encode).
-//
-// The optional onFirstLog callback is called once on the first log line so
-// callers can move the UI out of "Preparing..." the moment FFmpeg starts work.
-//
-// FFmpeg log lines are printed live to the browser console (not deferred until
-// after exec) so hangs are diagnosable without waiting for exec to return.
-const PROGRESS_STALE_MS = 2 * 60_000 // 2 min: logged-but-no-output timeout
+// Watchdog timeouts:
+// 1. Silent worker watchdog: fires when NO log or progress event occurs for staleMs window.
+// 2. Progress stall watchdog (for operations that expect progress, e.g. video encodes):
+//    - Startup grace period (PROGRESS_STARTUP_GRACE_MS): fires when FFmpeg logs but emits no
+//      valid progress for 2 minutes (catches infinite filter loops like loudnorm with unknown duration).
+//    - Ongoing progress stall (PROGRESS_STALE_MS): fires when progress stops advancing for 2 minutes
+//      mid-encode (catches frozen encoding threads while logging threads continue).
+const PROGRESS_STARTUP_GRACE_MS = 2 * 60_000 // 2 min grace period before first progress
+const PROGRESS_STALE_MS         = 2 * 60_000 // 2 min without progress advancing once started
+const WATCHDOG_CHECK_INTERVAL_MS = 5_000     // check watchdogs every 5 seconds
+
+export interface RunFfmpegOptions {
+  staleMs?: number
+  onFirstLog?: () => void
+  expectsProgress?: boolean
+  progressStaleMs?: number
+  startupGraceMs?: number
+}
 
 export async function runFfmpegWithWatchdog(
   ff: FFmpeg,
   args: string[],
-  staleMs = EXEC_STALE_FLOOR_MS,
+  staleMsOrOptions: number | RunFfmpegOptions = EXEC_STALE_FLOOR_MS,
   onFirstLog?: () => void,
+  expectsProgressParam?: boolean,
 ): Promise<void> {
+  let staleMs = EXEC_STALE_FLOOR_MS
+  let onFirstLogCb = onFirstLog
+  let expectsProgress = false
+  let progressStaleMs = PROGRESS_STALE_MS
+  let startupGraceMs = PROGRESS_STARTUP_GRACE_MS
+
+  if (typeof staleMsOrOptions === 'object' && staleMsOrOptions !== null) {
+    if (staleMsOrOptions.staleMs !== undefined) staleMs = staleMsOrOptions.staleMs
+    if (staleMsOrOptions.onFirstLog !== undefined) onFirstLogCb = staleMsOrOptions.onFirstLog
+    if (staleMsOrOptions.expectsProgress !== undefined) expectsProgress = staleMsOrOptions.expectsProgress
+    if (staleMsOrOptions.progressStaleMs !== undefined) progressStaleMs = staleMsOrOptions.progressStaleMs
+    if (staleMsOrOptions.startupGraceMs !== undefined) startupGraceMs = staleMsOrOptions.startupGraceMs
+  } else {
+    if (typeof staleMsOrOptions === 'number') staleMs = staleMsOrOptions
+    if (expectsProgressParam !== undefined) expectsProgress = expectsProgressParam
+  }
+
+  const opGen = _instanceGeneration
   const logLines: string[] = []
-  let lastActivityMs    = Date.now()
-  let firstLogMs        = 0      // when the first log line arrived
-  let lastValidProgressMs = 0    // when the last finite >=0 progress arrived
-  let firstLogFired     = false
+  let lastActivityMs        = Date.now()
+  let firstLogMs            = 0      // when the first log line arrived
+  let firstLogFired         = false
+  let lastProgressValue     = -1
+  let lastProgressAdvanceMs = 0      // when progress last advanced forward
 
   const logHandler = ({ message }: { message: string }) => {
     logLines.push(message)
@@ -76,13 +173,16 @@ export async function runFfmpegWithWatchdog(
     if (!firstLogFired) {
       firstLogFired  = true
       firstLogMs     = Date.now()
-      onFirstLog?.()
+      onFirstLogCb?.()
     }
   }
   const progressActivityHandler = ({ progress }: { progress: number }) => {
     lastActivityMs = Date.now()
     if (isFinite(progress) && progress >= 0) {
-      lastValidProgressMs = Date.now()
+      if (progress > lastProgressValue) {
+        lastProgressValue = progress
+        lastProgressAdvanceMs = Date.now()
+      }
     }
   }
 
@@ -100,57 +200,106 @@ export async function runFfmpegWithWatchdog(
         clearInterval(staleTimer!)
         staleTimer = null
         const staleMinutes = Math.round(staleMs / 60_000)
-        reject(new Error(
+        reject(new WatchdogTimeoutError(
           `The video processing engine stopped responding (no activity for ${staleMinutes} minutes). ` +
           'Try a shorter clip, lower quality, or turning off audio filters.'
         ))
         return
       }
 
-      // Watchdog 2: FFmpeg is logging but never emits a valid progress value.
-      // This catches filters (e.g. loudnorm with unknown output duration) that
-      // loop forever writing log lines while producing zero output frames.
-      if (
-        firstLogMs > 0 &&
-        lastValidProgressMs === 0 &&
-        now - firstLogMs > PROGRESS_STALE_MS
-      ) {
-        clearInterval(staleTimer!)
-        staleTimer = null
-        reject(new Error(
-          'The export started but produced no output frames for 2 minutes. ' +
-          'Try turning off loudness normalization, or use a shorter clip.'
-        ))
+      // Watchdog 2: progress monitoring for operations that produce progress.
+      if (expectsProgress) {
+        // Phase 2A: initial startup grace period before first progress advancement
+        if (
+          firstLogMs > 0 &&
+          lastProgressAdvanceMs === 0 &&
+          now - firstLogMs > startupGraceMs
+        ) {
+          clearInterval(staleTimer!)
+          staleTimer = null
+          reject(new WatchdogTimeoutError(
+            'The export started but produced no output frames for 2 minutes. ' +
+            'Try turning off loudness normalization, or use a shorter clip.'
+          ))
+          return
+        }
+
+        // Phase 2B: ongoing progress advancement stall
+        if (
+          lastProgressAdvanceMs > 0 &&
+          lastProgressValue < 1.0 &&
+          now - lastProgressAdvanceMs > progressStaleMs
+        ) {
+          clearInterval(staleTimer!)
+          staleTimer = null
+          reject(new WatchdogTimeoutError(
+            'The export stalled and made no progress for 2 minutes. ' +
+            'Try a shorter clip or lower quality.'
+          ))
+          return
+        }
       }
-    }, 15_000)
+    }, WATCHDOG_CHECK_INTERVAL_MS)
   })
 
   let ret: number
   try {
     ret = (await Promise.race([ff.exec(args), stalePromise])) as number
   } catch (raw) {
-    // Stale timeout or WASM rejection: terminate the worker so the next export
-    // starts fresh instead of blocking on a dead instance.
+    // 1. Intentional cancellation / reset check before health probe:
+    // If resetFfmpeg() was called during this operation, do not treat as an engine failure.
+    if (_instanceGeneration !== opGen || isTerminationError(raw)) {
+      throw normalizeError(raw, 'Operation was cancelled.')
+    }
+
+    // 2. Watchdog timeout check:
+    // Watchdog indicates an unresponsive worker. Terminate immediately and mark for reload.
+    if (isWatchdogError(raw)) {
+      _workerAborted = true
+      if (_activeWorkerBlobURL) {
+        try { URL.revokeObjectURL(_activeWorkerBlobURL) } catch { /* ignore */ }
+        _activeWorkerBlobURL = null
+      }
+      try { ff.terminate() } catch { /* ignore */ }
+      const msg = raw instanceof Error ? raw.message : String(raw)
+      throw new Error(msg)
+    }
+
+    // 3. Operation-level rejection (e.g. FFMessageType.ERROR from worker):
+    // Test worker health before deciding whether it died.
+    const isHealthy = await verifyFfmpegHealth(ff)
+
+    // Re-check generation immediately after health check:
+    // If resetFfmpeg() or reload occurred while verifyFfmpegHealth was awaiting,
+    // this operation is stale and must not mark the new instance aborted or terminate it.
+    if (_instanceGeneration !== opGen) {
+      throw normalizeError(raw, 'Operation was cancelled.')
+    }
+
+    if (isHealthy) {
+      console.log('[CalmClip] FFmpeg operation rejected, but worker passed health verification. Preserving worker.')
+      throw normalizeError(raw)
+    }
+
+    // 4. Health check failed or timed out: instance is genuinely unrecoverable.
+    console.log('[CalmClip] FFmpeg worker failed health verification, terminating instance for reload.')
     _workerAborted = true
+    if (_activeWorkerBlobURL) {
+      try { URL.revokeObjectURL(_activeWorkerBlobURL) } catch { /* ignore */ }
+      _activeWorkerBlobURL = null
+    }
     try { ff.terminate() } catch { /* ignore */ }
-    // ff.exec() can reject with a non-Error (e.g. DOMException or a plain
-    // object from WASM). Normalise to Error so callers can rely on instanceof.
-    const msg = raw instanceof Error
-      ? raw.message
-      : (typeof raw === 'string' ? raw : 'FFmpeg threw an unexpected internal error.')
-    throw new Error(msg)
+    throw normalizeError(raw)
   } finally {
     if (staleTimer !== null) { clearInterval(staleTimer); staleTimer = null }
     ff.off('log',      logHandler)
     ff.off('progress', progressActivityHandler)
   }
-  // The MT pthreads runtime fires abort() after exec() exits, printing "Aborted()"
-  // and killing the worker. Detect it here so loadFfmpeg() can discard the dead
-  // instance before the next exec instead of hanging on a dead worker.
-  if (logLines.some(l => l.includes('Aborted()'))) {
-    console.log('[CalmClip] execOrThrow: Aborted() detected in FFmpeg log, marking instance for reload')
-    _workerAborted = true
-  }
+  // Note: Emscripten runtime exit unwinds via abort(""), printing "Aborted()" to
+  // stderr before exec() returns exit code 0. ffmpeg-core's exec() wrapper catches
+  // this exit and returns code 0 normally. Therefore, "Aborted()" appearing in logs
+  // during a successful exit (ret === 0) is benign completion output, not a worker
+  // failure, and must not trigger worker destruction or instance reload.
   if (ret! !== 0) {
     const tail = logLines.slice(-30).join('\n').trim()
     const detail = tail ? `\n\nFFmpeg log (last 30 lines):\n${tail}` : ''
@@ -182,13 +331,19 @@ function validateFilterExpr(filter: string, context: string): void {
 }
 
 export async function loadFfmpeg(): Promise<FFmpeg> {
-  // If the previous exec logged Aborted(), the MT pthreads worker is dead.
+  // If the previous exec suffered an unrecoverable failure (watchdog timeout or
+  // worker-level rejection), _workerAborted is set.
   // Discard the cached instance so the code below loads a fresh one.
   // Also mark MT as failed: the shared pthreads environment has residual state
   // that causes a fresh MT reload to deadlock mid-exec. The single-threaded
   // core is stable after an MT crash and handles all the same filters.
   if (_workerAborted) {
-    console.log('[CalmClip] loadFfmpeg: discarding dead WASM instance (Aborted() detected), reloading with ST core')
+    console.log('[CalmClip] loadFfmpeg: discarding dead WASM instance (unrecoverable error detected), reloading with ST core')
+    _instanceGeneration++
+    if (_activeWorkerBlobURL) {
+      try { URL.revokeObjectURL(_activeWorkerBlobURL) } catch { /* ignore */ }
+      _activeWorkerBlobURL = null
+    }
     if (_ff) { try { _ff.terminate() } catch { /* ignore */ } }
     _ff             = null
     _loaded         = false
@@ -199,7 +354,8 @@ export async function loadFfmpeg(): Promise<FFmpeg> {
   if (_ff && _loaded) return _ff
   if (_loadingPromise) return _loadingPromise
 
-  _loadingPromise = (async () => {
+  const loadGen = _instanceGeneration
+  const currentPromise = (async () => {
     // Try multi-threaded core first when SharedArrayBuffer is available.
     // toBlobURL converts CDN URLs to same-origin blob: URLs so the Emscripten
     // worker thread can load them in a cross-origin-isolated context.
@@ -210,69 +366,167 @@ export async function loadFfmpeg(): Promise<FFmpeg> {
 
     if (canTryMT) {
       const ffMT = new FFmpeg()
-      let mtBlobURLs: string[] = []
+      const trackedBlobURLs = new Set<string>()
+      let mtAbandoned = false
+
+      const safelyRevokeBlobUrl = (url: string | null | undefined): void => {
+        if (!url) return
+        trackedBlobURLs.delete(url)
+        try { URL.revokeObjectURL(url) } catch { /* ignore */ }
+      }
+
+      const revokeAllTrackedBlobUrls = (): void => {
+        for (const url of trackedBlobURLs) {
+          try { URL.revokeObjectURL(url) } catch { /* ignore */ }
+        }
+        trackedBlobURLs.clear()
+      }
+
+      const fetchTrackedBlobUrl = async (url: string, mime: string): Promise<string> => {
+        const blobUrl = await toBlobURL(url, mime)
+        // If MT loading was abandoned or instance generation changed while the fetch was in flight,
+        // revoke the newly created object URL immediately.
+        if (mtAbandoned || _instanceGeneration !== loadGen) {
+          safelyRevokeBlobUrl(blobUrl)
+          throw new Error('MT load abandoned')
+        }
+        trackedBlobURLs.add(blobUrl)
+        return blobUrl
+      }
+
+      let mtTimer: ReturnType<typeof setTimeout> | null = null
+      let loadedWorkerBlobUrl: string | null = null
       try {
-        // The timeout must cover the toBlobURL fetches (up to ~37 MB from CDN)
-        // as well as ffMT.load(). Previously only load() was raced, so a stalled
-        // CDN fetch would hang indefinitely.
+        // The timeout covers the toBlobURL fetches as well as ffMT.load().
         await Promise.race([
           (async () => {
             const [coreURL, wasmURL, workerURL] = await Promise.all([
-              toBlobURL(`${CDN_MT}/ffmpeg-core.js`,        'text/javascript'),
-              toBlobURL(`${CDN_MT}/ffmpeg-core.wasm`,      'application/wasm'),
-              toBlobURL(`${CDN_MT}/ffmpeg-core.worker.js`, 'text/javascript'),
+              fetchTrackedBlobUrl(`${CDN_MT}/ffmpeg-core.js`,        'text/javascript'),
+              fetchTrackedBlobUrl(`${CDN_MT}/ffmpeg-core.wasm`,      'application/wasm'),
+              fetchTrackedBlobUrl(`${CDN_MT}/ffmpeg-core.worker.js`, 'text/javascript'),
             ])
-            mtBlobURLs = [coreURL, wasmURL, workerURL]
+            loadedWorkerBlobUrl = workerURL
+
+            if (mtAbandoned || _instanceGeneration !== loadGen) {
+              revokeAllTrackedBlobUrls()
+              try { ffMT.terminate() } catch { /* ignore */ }
+              return
+            }
+
             await ffMT.load({ coreURL, wasmURL, workerURL })
+
+            // If timeout or reset fired while ffMT.load was in-flight, clean up immediately
+            if (mtAbandoned || _instanceGeneration !== loadGen) {
+              revokeAllTrackedBlobUrls()
+              try { ffMT.terminate() } catch { /* ignore */ }
+              return
+            }
           })(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('MT timeout')), MT_LOAD_TIMEOUT_MS)
-          ),
+          new Promise<never>((_, reject) => {
+            mtTimer = setTimeout(() => reject(new Error('MT timeout')), MT_LOAD_TIMEOUT_MS)
+          }),
         ])
-        mtBlobURLs.forEach(u => URL.revokeObjectURL(u))
-        mtBlobURLs = []
+
+        // Revoke coreURL and wasmURL immediately after successful load:
+        // wasmURL is 7.3 MB and has already been compiled into WebAssembly.Module.
+        // Retain workerURL for the lifetime of this ffMT instance so dynamic pthread creation succeeds.
+        if (loadedWorkerBlobUrl) {
+          if (_activeWorkerBlobURL && _activeWorkerBlobURL !== loadedWorkerBlobUrl) {
+            try { URL.revokeObjectURL(_activeWorkerBlobURL) } catch { /* ignore */ }
+          }
+          _activeWorkerBlobURL = loadedWorkerBlobUrl
+          trackedBlobURLs.delete(loadedWorkerBlobUrl)
+        }
+        revokeAllTrackedBlobUrls()
+
+        // Generation check: if reset occurred while loading, discard this instance
+        if (_instanceGeneration !== loadGen) {
+          if (_activeWorkerBlobURL) {
+            try { URL.revokeObjectURL(_activeWorkerBlobURL) } catch { /* ignore */ }
+            _activeWorkerBlobURL = null
+          }
+          try { ffMT.terminate() } catch { /* ignore */ }
+          throw new Error('FFmpeg loading was cancelled.')
+        }
+
         _ff             = ffMT
         _loaded         = true
-        _loadingPromise = null
         return ffMT
-      } catch {
-        _mtFailed = true
-        mtBlobURLs.forEach(u => { try { URL.revokeObjectURL(u) } catch { /* ignore */ } })
+      } catch (err) {
+        mtAbandoned = true
+        revokeAllTrackedBlobUrls()
+        if (_activeWorkerBlobURL) {
+          try { URL.revokeObjectURL(_activeWorkerBlobURL) } catch { /* ignore */ }
+          _activeWorkerBlobURL = null
+        }
         try { ffMT.terminate() } catch { /* ignore */ }
+
+        if (_instanceGeneration !== loadGen) {
+          throw normalizeError(err, 'FFmpeg loading was cancelled.')
+        }
+
+        _mtFailed = true
         // Fall through to single-threaded core
+      } finally {
+        if (mtTimer !== null) {
+          clearTimeout(mtTimer)
+          mtTimer = null
+        }
       }
     }
 
     // Single-threaded core: universal fallback
     const ffST = new FFmpeg()
+    let stTimer: ReturnType<typeof setTimeout> | null = null
     try {
       await Promise.race([
         ffST.load({
           coreURL: `${CDN_SINGLE}/ffmpeg-core.js`,
           wasmURL: `${CDN_SINGLE}/ffmpeg-core.wasm`,
         }),
-        new Promise<never>((_, reject) =>
-          setTimeout(
+        new Promise<never>((_, reject) => {
+          stTimer = setTimeout(
             () => reject(new Error('Engine load timed out after 60 seconds. Check your internet connection and try again.')),
             LOAD_TIMEOUT_MS,
           )
-        ),
+        }),
       ])
     } catch (e) {
-      _ff             = null
-      _loaded         = false
-      _loadingPromise = null
+      if (_instanceGeneration === loadGen) {
+        _ff             = null
+        _loaded         = false
+      }
+      try { ffST.terminate() } catch { /* ignore */ }
+      if (_instanceGeneration !== loadGen) {
+        throw normalizeError(e, 'FFmpeg loading was cancelled.')
+      }
       const cause = e instanceof Error ? e.message : String(e)
       throw new Error(
         `Failed to load the video processing engine. Check your internet connection and try again. (${cause})`
       )
+    } finally {
+      if (stTimer !== null) {
+        clearTimeout(stTimer)
+        stTimer = null
+      }
     }
+
+    // Generation check before committing ST instance
+    if (_instanceGeneration !== loadGen) {
+      try { ffST.terminate() } catch { /* ignore */ }
+      throw new Error('FFmpeg loading was cancelled.')
+    }
+
     _ff             = ffST
     _loaded         = true
-    _loadingPromise = null
     return ffST
-  })()
+  })().finally(() => {
+    if (_loadingPromise === currentPromise) {
+      _loadingPromise = null
+    }
+  })
 
+  _loadingPromise = currentPromise
   return _loadingPromise
 }
 
@@ -286,15 +540,18 @@ export function isFFLoaded(): boolean {
 // Other features must not call ff.exec() concurrently with an export: the
 // WASM singleton is not re-entrant and two simultaneous exec() calls deadlock.
 export function isFFmpegBusy(): boolean {
-  return _ffWorkerBusy
+  return _activeLockLease !== null
 }
 
 // Acquire the lock before starting an FFmpeg task. Throws if busy.
-export function acquireFfmpegLock(): void {
-  if (_ffWorkerBusy) {
+// Returns an ownership lease that must be provided to releaseFfmpegLock.
+export function acquireFfmpegLock(): FfmpegLockLease {
+  if (_activeLockLease !== null) {
     throw new Error('A video processing task is in progress. Please wait for it to finish first.')
   }
-  _ffWorkerBusy = true
+  const lease = Symbol('ffmpeg-lock')
+  _activeLockLease = lease
+  return lease
 }
 
 // Wait for another local FFmpeg operation to finish before starting a task.
@@ -311,29 +568,58 @@ export async function waitForFfmpegAvailable(timeoutMs = 5 * 60_000): Promise<vo
 }
 
 // Release the FFmpeg task lock.
-export function releaseFfmpegLock(): void {
-  _ffWorkerBusy = false
+// A mandatory lease token must be provided. Only releases if the lease matches the active lock,
+// preventing stale finally blocks or unauthenticated calls from clearing a lock held by an operation.
+export function releaseFfmpegLock(lease: FfmpegLockLease): void {
+  if (_activeLockLease === lease) {
+    _activeLockLease = null
+  }
 }
 
 // Terminates the FFmpeg worker and clears the singleton cache.
 // Call this after a crash or a user-initiated cancel so the next export
 // starts with a fresh instance rather than a broken or missing one.
 export function resetFfmpeg(): void {
+  _instanceGeneration++
+  if (_activeWorkerBlobURL) {
+    try { URL.revokeObjectURL(_activeWorkerBlobURL) } catch { /* ignore */ }
+    _activeWorkerBlobURL = null
+  }
   if (_ff) {
     try { _ff.terminate() } catch { /* ignore */ }
   }
-  _ff             = null
-  _loaded         = false
-  _loadingPromise = null
-  _workerAborted  = false
-  _ffWorkerBusy   = false
+  _ff              = null
+  _loaded          = false
+  _loadingPromise  = null
+  _workerAborted   = false
+  _activeLockLease = null
+}
+
+export function getActiveWorkerBlobUrlForTesting(): string | null {
+  return _activeWorkerBlobURL
+}
+
+export function isWorkerAborted(): boolean {
+  return _workerAborted
+}
+
+export function isMtFailed(): boolean {
+  return _mtFailed
+}
+
+export function resetMtFailedForTests(): void {
+  _mtFailed = false
+}
+
+export function getFfmpegGeneration(): number {
+  return _instanceGeneration
 }
 
 export { fetchFile }
 
 export async function stripMetadataFromWebm(blob: Blob): Promise<Blob> {
   await waitForFfmpegAvailable()
-  acquireFfmpegLock()
+  const lockLease = acquireFfmpegLock()
   const inputName  = 'sanitize-input.webm'
   const outputName = 'sanitize-output.webm'
 
@@ -365,7 +651,7 @@ export async function stripMetadataFromWebm(blob: Blob): Promise<Blob> {
         ff.deleteFile(outputName).catch(() => {})
       }
     } finally {
-      releaseFfmpegLock()
+      releaseFfmpegLock(lockLease)
     }
   }
 }
@@ -661,11 +947,11 @@ async function exportVideoStreamCopy(ff: FFmpeg, opts: ExportOptions): Promise<U
 }
 
 export async function exportVideo(opts: ExportOptions): Promise<Uint8Array> {
-  acquireFfmpegLock()
+  const lockLease = acquireFfmpegLock()
   try {
     return await _exportVideoInner(opts)
   } finally {
-    releaseFfmpegLock()
+    releaseFfmpegLock(lockLease)
   }
 }
 
@@ -824,7 +1110,7 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
       if (stripMetadata) args.push('-map_metadata', '-1')
       args.push('-y', outputName)
       validateFilterExpr(scaleFilter, '-vf')
-      await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration), signalStarted)
+      await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration), signalStarted, true)
     } else {
       const parts: string[] = []
       parts.push(`[0:v]${scaleFilter}[vsc]`)
@@ -874,7 +1160,7 @@ async function _exportVideoInner(opts: ExportOptions): Promise<Uint8Array> {
       ]
       if (stripMetadata) args.push('-map_metadata', '-1')
       args.push('-y', outputName)
-      await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration), signalStarted)
+      await runFfmpegWithWatchdog(ff, args, calcStaleMs(duration), signalStarted, true)
     }
     onProgress(99)
 
@@ -994,7 +1280,7 @@ async function exportWithCuts(p: CutsExportParams): Promise<Uint8Array> {
     if (stripMetadata) args.push('-map_metadata', '-1')
     args.push('-y', outputName)
 
-    await runFfmpegWithWatchdog(ff, args, calcStaleMs(outDuration))
+    await runFfmpegWithWatchdog(ff, args, calcStaleMs(outDuration), undefined, true)
     // Signal 99 % before readFile so the bar advances past whatever FFmpeg's
     // last progress event reported. readFile produces no progress events, so
     // without this the bar stays at an intermediate value until "done" appears.
